@@ -52,7 +52,7 @@ branch is capped with a `branch_end` `Placeholder` holding its final reference
 and floor.
 
 `expanded` is that same tree with all of it pruned: a parameter is kept only
-when the author wrote it (or a post-`expand_lattice` `set` wrote it). It is
+when the author wrote it (or a `post_expansion` `set` wrote it). It is
 `full_expanded` with nodes removed rather than an earlier snapshot, so a
 parameter present in both holds the *same* value in both, with every `set` and
 ABSOLUTE controller applied.
@@ -247,16 +247,30 @@ constants, and variables — and returns them as a `Vector{YAMLNode}`. The synta
 is:
 
 ```text
-[{lattice}>>>][{branch}>>][{kind}::]{name}[>{group}.{subgroup}. … .{parameter}]
+{element-set}[>{group}.{subgroup}. … .{parameter}]
 ```
 
+where `{element-set}` is a `,` union of `&` intersections of `:` ranges of
+element names, and an element name is
+
+```text
+[{lattice}>>>][{branch}>>][{kind}::]{name}[#{N}]
+```
+
+The operators bind, tightest first: `>>>`, `>>`, `::`, `#`, `:`, `&`, `,`, `>`.
 `{lattice}`, `{branch}`, and `{name}` are [PCRE2](https://www.pcre.org) patterns
 matched against the *whole* name (anchored at both ends), so `B1.*` matches `B1a`
-and `B1b` but `B1` on its own matches neither. `{kind}` is matched exactly, and
-the dotted parameter path after the single `>` is matched exactly, key by key.
-An omitted or empty pattern matches every name at that level, and `{branch}`
-matches an element if any enclosing BeamLine/Branch name matches — so elements in
-sub-lines are included.
+and `B1b` but `B1` on its own matches neither. Characters inside a `(...)`,
+`[...]` or `{...}` group belong to the pattern, so the comma in `Q\d{2,3}` is not
+a union. A `{name}` of digits only is the 1-based index of an element in its line.
+`{kind}` is an element kind, `Controller`, or one of the MetaP components `alias`,
+`ID`, `label` and `description` (`alias::black` matches the elements whose
+`MetaP.alias` is `black`). `#{N}` keeps the N-th match, and a range `{a}:{b}`
+runs from each `a` to the next `b` in the same line, wrapping round the end of the
+line. The dotted parameter path after the single `>` is matched exactly, key by
+key, and applies to every element of the set. `{branch}` matches an element if
+any enclosing BeamLine/Branch name matches — so elements in sub-lines are
+included.
 
 ```julia
 lat = pj.parse_and_expand_pals("ex.pals.yaml")
@@ -274,7 +288,18 @@ pj.match_names(lat.full_expanded, "ring>>>inj_line>>Q.*>length")
 # Omit the parameter path to match the element itself, or the group:
 pj.match_names(lat.full_expanded, "Q1a")             # the element node
 pj.match_names(lat.full_expanded, "Q1a>BendP")       # a parameter-group node
+
+# Instances, ranges, unions and intersections:
+pj.match_names(lat.full_expanded, "Q1a#2")                     # the second Q1a
+pj.match_names(lat.full_expanded, "Q1a:Q2a>length")            # Q1a through Q2a
+pj.match_names(lat.full_expanded, "Q1a, Q2a")                  # either
+pj.match_names(lat.full_expanded, "Quadrupole::.* & Q1a:Q2a")  # the quads among them
 ```
+
+Searched before expansion — in `lat.combined`, `lat.adjunct`, or a tree read with
+`parse_file` — an unqualified name reaches the element *definitions* standing
+under `facility` or `post_expansion`, not the elements written inside a beamline's
+`line`; only a name qualified by the beamline reaches those (`myline>>q1`).
 
 Pass any node of the tree you want to search — `lat.full_expanded` for beamlines and
 elements, since those are only fully realised after expansion. The returned
@@ -288,11 +313,13 @@ end
 
 ### Constants and variables
 
-Lattice parameters include constant and variable names. A *bare* name — no
-lattice/branch/kind qualifier and no parameter path — also matches every
-constant and variable defined directly under the `PALS` or `facility` node, in
-both the full (`kind: constant` / `kind: variable`) and compact
-(`constants:` / `variables:` list) forms:
+Lattice parameters include constant and variable names. A *bare* name — one
+element name with no qualifier of any sort and no parameter path — also matches
+every constant and variable defined directly under the `PALS`, `facility` or
+`post_expansion` node, in both the full (`kind: constant` / `kind: variable`) and
+compact (`constants:` / `variables:` list) forms, and every controller of that
+name. A controller is also matched by `Controller::{name}`, and its variable by
+`{controller}>{variable}`:
 
 Constants and variables are defined at facility level rather than inside the
 lattice, so they are found in `lat.adjunct` — searching `lat.full_expanded` for one
@@ -307,12 +334,7 @@ pj.match_names(lat.adjunct, "a_.*")      # every constant/var named a_…
 For a compact-form entry the matched node is the `name: value` scalar; for a
 full-form entry it is the named node, underneath which `kind`/`value` live.
 
-!!! note "Not yet implemented"
-    The full *Element Name Matching* grammar also defines `#N` instance
-    selection, `{e1}:{e2}` ranges, `,` unions, and `&` intersections. These are
-    not yet handled by `match_names`.
-
-Results are de-duplicated and returned in document order, and a malformed
+Results are de-duplicated and returned in match order, and a malformed
 pattern yields an empty vector. A runnable version of these examples is in
 `examples/match_names.jl`.
 

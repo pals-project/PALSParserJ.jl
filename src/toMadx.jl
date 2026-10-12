@@ -185,8 +185,12 @@ function pals_to_madx(yaml::YAMLNode)
     haskey(pals, key) && append!(lat.constants, _madx_constants(pals[key]))
   end
 
+  haskey(pals, "girders") && !isempty(pals["girders"]) &&
+      error("MAD-X has no girders: the `PALS: girders` cannot be translated")
+
   N_lattices = 0
   controllers = YAMLNode[]
+  placeholders = Set{String}()
   for ele in facility
     props = ele[1]
     # The compact `constants:`/`variables:` list is a facility entry in its own right, with no
@@ -214,12 +218,19 @@ function pals_to_madx(yaml::YAMLNode)
       push!(controllers, ele)
     elseif pals_kind == "constant" || pals_kind == "variable"
       push!(lat.constants, _madx_constant(props, pals_kind))
+    elseif pals_kind == "Placeholder"
+      # A Placeholder holds a place while a PALS lattice is built and is gone once it is.
+      push!(placeholders, node_key(props))
     else
       def, align = _make_madx_ele(ele)
       push!(lat.elements, def)
       isempty(align.attrs) || push!(lat.alignments, align)
       any(a -> occursin(_MADX_RIGIDITY, a), def.attrs) && (lat.rigidity = true)
     end
+  end
+
+  for bl in lat.beamlines
+    filter!(m -> m ∉ placeholders, bl.members)
   end
 
   # A PALS controller owns its variables and MAD-X has no such scope, so what each one is
@@ -912,7 +923,6 @@ function _madx_kind(ele_kind::String)
   elseif  ele_kind == "Fork";             return error("No Fork elements in MAD-X: a MAD-X " *
                                                        "lattice does not branch")
   elseif  ele_kind == "Marker";           return "marker"
-  elseif  ele_kind == "Placeholder";      return "placeholder"
   elseif  ele_kind == "Patch";            return "changeref"
   elseif  ele_kind == "ReferenceChange";  return error("No ReferenceChange elements in MAD-X: " *
                                                        "the reference energy is the BEAM command's")
@@ -1649,8 +1659,9 @@ function _make_madx_ele(ele::YAMLNode)
           L === nothing &&
               error("$name: `gradient` needs a length to become the voltage MAD-X states")
           tmp = "volt = $(_madx_scale(String(rfP["gradient"]), 1e-6)) * $L,"
+        # MAD-X counts the phase in turns where PALS counts it in radians.
         elseif rfkey == "phase"
-          tmp = "lag = $(_madx_shift(String(rfP["phase"]), lag_offset)),"
+          tmp = "lag = $(_madx_shift(_madx_scale(String(rfP["phase"]), 1 / 2π), lag_offset)),"
         elseif rfkey == "cavity_type"
           String(rfP["cavity_type"]) == "TRAVELING_WAVE" &&
               println("$name: a traveling wave cavity is MAD-X's twcavity, which only PTC " *

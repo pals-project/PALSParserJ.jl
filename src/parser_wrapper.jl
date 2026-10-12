@@ -368,32 +368,40 @@ searched and the returned nodes belong to that same tree.
 
 `match_string` has the form
 
-    [{lattice}>>>][{branch}>>][{kind}::]{name}[>{group}.{sub}. … .{parameter}]
+    {element-set}[>{group}.{sub}. … .{parameter}]
 
+where `{element-set}` is a `,` union of `&` intersections of `:` ranges of
+element names, and an element name is
+
+    [{lattice}>>>][{branch}>>][{kind}::]{name}[#{N}]
+
+The operators bind, tightest first: `>>>`, `>>`, `::`, `#`, `:`, `&`, `,`, `>`.
 `{lattice}`, `{branch}`, and `{name}` are [PCRE2](https://www.pcre.org) patterns
-matched against the whole name (anchored at both ends); `{kind}` is matched
-exactly; the parameter path after the single `>` is matched exactly, key by key.
-An omitted or empty pattern matches any name at that level. `{branch}` matches an
-element if any enclosing BeamLine/Branch name matches, so elements in sub-lines
-are included.
+matched against the whole name; characters inside a `(...)`, `[...]` or `{...}`
+group belong to the pattern. A `{name}` of digits only is the 1-based index of an
+element in its line. `{kind}` is an element kind, `Controller`, or one of the
+MetaP components `alias`, `ID`, `label` and `description`. `#{N}` keeps the N-th
+match, and a range `{a}:{b}` runs from each `a` to the next `b` in the same line.
+The parameter path after the single `>` is matched exactly, key by key, and
+applies to every element of the set.
+
+In an expanded lattice (`lat.expanded`, `lat.full_expanded`) a name reaches the
+elements of the lattice. In a tree holding a `PALS` node (`lat.original`,
+`lat.combined`, `lat.adjunct`, or a file read with `parse_file`) an unqualified
+name reaches the element definitions under `facility` or `post_expansion`, and
+only a `{branch}>>` qualified name reaches the elements written in a beamline's
+`line`.
 
 The node returned for each match is whatever the string resolves to: the element
-node (no parameter path), the parameter-group or parameter node (with a path),
-or — for a bare name (no lattice/branch/kind qualifier and no parameter path) —
-additionally each matching constant and variable defined directly under the
-`PALS` or `facility` node (both the full `kind: constant`/`kind: variable` and
-the compact `constants:`/`variables:` forms). Lattice parameters therefore
-include constant and variable names.
+node (no parameter path), or the parameter-group or parameter node (with a
+path). Controllers are matched by `Controller::{name}` and a controller variable
+by `{controller}>{variable}`. A bare name -- one element name with no qualifier
+and no parameter path -- additionally matches each constant and variable of that
+name defined under the `PALS`, `facility` or `post_expansion` node, and each
+controller of that name. Constants, variables and controllers are found in
+`lat.adjunct`, not in `lat.full_expanded`.
 
-Which tree to search follows from that: elements are in `lat.full_expanded`, while
-constants and variables are defined at facility level and so are found in
-`lat.adjunct`. Searching `lat.full_expanded` for a constant matches nothing, since
-the `PALS`/`facility` node it would be defined under is not part of that tree.
-
-Not yet implemented from *Element Name Matching*: `#N` instance selection,
-`{e1}:{e2}` ranges, `,` unions, and `&` intersections.
-
-Results are de-duplicated and returned in document order. A malformed pattern
+Results are de-duplicated and returned in match order. A malformed pattern
 yields an empty vector.
 
 # Example
@@ -403,6 +411,7 @@ lat = parse_and_expand_pals("lattice.pals.yaml")
 match_names(lat.full_expanded, "B1.*>BendP.e1")       # e1 of every B1… bend
 match_names(lat.full_expanded, "Quadrupole::.*")      # every quadrupole element
 match_names(lat.full_expanded, "inj>>>arc>>Q.*>length")  # length of arc's Q… in lattice inj
+match_names(lat.full_expanded, "Q1:Q5 & Quadrupole::.*")  # the quadrupoles from Q1 to Q5
 match_names(lat.adjunct, "a_.*")                # constants/variables named a_…
 ```
 """

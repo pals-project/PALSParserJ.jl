@@ -94,6 +94,7 @@ write_scibmad_file(pals_to_scibmad(yaml), filename)
 function pals_to_scibmad(yaml::YAMLNode)
   facility = yaml["PALS"]["facility"]
   lat = SciBmadLattice()
+  placeholders = Set{String}()
   for ele in facility
     props = ele[keys(ele)[1]]
     haskey(props, "kind") || continue
@@ -116,10 +117,18 @@ function pals_to_scibmad(yaml::YAMLNode)
       push!(lat.controllers, _make_scibmad_controller(ele, facility))
     elseif kind == "constant" || kind == "variable"
       error("$(String(keys(ele)[1])): `$kind` definitions are not yet translated to SciBmad")
+    elseif kind == "Placeholder"
+      # A Placeholder holds a place while a PALS lattice is built and is gone once it is.
+      push!(placeholders, String(keys(ele)[1]))
     else
       push!(lat.elements, _make_scibmad_ele(ele))
     end
   end
+  for bl in lat.beamlines
+    filter!(m -> m ∉ placeholders, bl.members)
+  end
+  haskey(yaml["PALS"], "girders") && !isempty(yaml["PALS"]["girders"]) &&
+      println("SciBmad has no girders: the `PALS: girders` are not translated")
   return lat
 end
 
@@ -551,8 +560,6 @@ function _make_scibmad_ele(ele::YAMLNode)
       println("ElectricMultipoleP not yet supported")
     elseif key == "FloorP"
       println("FloorP not yet supported")
-    elseif key == "FloorShiftP"
-      println("FloorShiftP not yet supported")
     elseif key == "ForkP"
       println("ForkP not yet supported")
     elseif key == "GirderP"
@@ -618,7 +625,7 @@ function _make_scibmad_ele(ele::YAMLNode)
         elseif rfkey == "gradient"
           println("gradient not yet supported")
         elseif rfkey == "phase"
-          push!(attrs, "phi0 = $(2 * π * Float64(rfP["phase"]))")
+          push!(attrs, "phi0 = $(String(rfP["phase"]))")
         elseif rfkey == "multipass_phase"
           println("multipass_phase not yet supported")
         elseif rfkey == "cavity_type"
