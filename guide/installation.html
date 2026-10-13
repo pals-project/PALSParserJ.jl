@@ -295,7 +295,7 @@ the PALSParserCpp <code class="docutils literal notranslate"><span class="pre">R
 <h2>3. Activate the Julia project<a class="headerlink" href="#activate-the-julia-project" title="Link to this heading">¶</a></h2>
 <p>From the <code class="docutils literal notranslate"><span class="pre">PALSParserJ</span></code> directory:</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">Pkg</span>
-<span class="n">Pkg</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">)</span>
+<span class="n">Pkg</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="s">"."</span><span class="p">)</span>
 <span class="n">Pkg</span><span class="o">.</span><span class="n">instantiate</span><span class="p">()</span>
 
 <span class="k">import</span><span class="w"> </span><span class="n">PALSParserJ</span><span class="w"> </span><span class="n">as</span><span class="w"> </span><span class="n">pj</span>
@@ -307,7 +307,7 @@ the PALSParserCpp <code class="docutils literal notranslate"><span class="pre">R
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="n">PALSParserJ</span><span class="w"> </span><span class="n">as</span><span class="w"> </span><span class="n">pj</span>
 
 <span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pj</span><span class="o">.</span><span class="n">create_empty_tree</span><span class="p">()</span>
-<span class="n">root</span><span class="p">[</span><span class="s">&quot;hello&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;world&quot;</span>
+<span class="n">root</span><span class="p">[</span><span class="s">"hello"</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"world"</span>
 <span class="n">println</span><span class="p">(</span><span class="n">pj</span><span class="o">.</span><span class="n">to_yaml_string</span><span class="p">(</span><span class="n">root</span><span class="p">))</span>
 </pre></div>
 </div>
@@ -336,7 +336,7 @@ one any time before that first call works, including after <code class="docutils
 </tbody>
 </table>
 </div>
-<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="nb">ENV</span><span class="p">[</span><span class="s">&quot;PALS_PARSER_CPP_DIR&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;/opt/src/PALSParserCpp&quot;</span>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="nb">ENV</span><span class="p">[</span><span class="s">"PALS_PARSER_CPP_DIR"</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"/opt/src/PALSParserCpp"</span>
 <span class="k">using</span><span class="w"> </span><span class="n">PALSParserJ</span>
 </pre></div>
 </div>

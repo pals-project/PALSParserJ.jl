@@ -273,14 +273,14 @@ structure and an output path and serialize the lattice file:</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">PALSParserJ</span>
 <span class="k">using</span><span class="w"> </span><span class="n">PALSParserJ</span><span class="o">:</span><span class="w"> </span><span class="n">parse_file</span>
 
-<span class="n">bmad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pals_to_bmad</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span><span class="n">joinpath</span><span class="p">(</span><span class="s">&quot;lattice_files&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;bta.pals.yaml&quot;</span><span class="p">)))</span>
-<span class="n">write_bmad_file</span><span class="p">(</span><span class="n">bmad</span><span class="p">,</span><span class="w"> </span><span class="n">joinpath</span><span class="p">(</span><span class="s">&quot;lattice_files&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;bta.pals_out.bmad&quot;</span><span class="p">))</span>
+<span class="n">bmad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pals_to_bmad</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span><span class="n">joinpath</span><span class="p">(</span><span class="s">"lattice_files"</span><span class="p">,</span><span class="w"> </span><span class="s">"bta.pals.yaml"</span><span class="p">)))</span>
+<span class="n">write_bmad_file</span><span class="p">(</span><span class="n">bmad</span><span class="p">,</span><span class="w"> </span><span class="n">joinpath</span><span class="p">(</span><span class="s">"lattice_files"</span><span class="p">,</span><span class="w"> </span><span class="s">"bta.pals_out.bmad"</span><span class="p">))</span>
 
-<span class="n">madx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pals_to_madx</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span><span class="n">joinpath</span><span class="p">(</span><span class="s">&quot;lattice_files&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;bta.pals.yaml&quot;</span><span class="p">)))</span>
-<span class="n">write_madx_file</span><span class="p">(</span><span class="n">madx</span><span class="p">,</span><span class="w"> </span><span class="n">joinpath</span><span class="p">(</span><span class="s">&quot;lattice_files&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;bta.pals_out.madx&quot;</span><span class="p">))</span>
+<span class="n">madx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pals_to_madx</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span><span class="n">joinpath</span><span class="p">(</span><span class="s">"lattice_files"</span><span class="p">,</span><span class="w"> </span><span class="s">"bta.pals.yaml"</span><span class="p">)))</span>
+<span class="n">write_madx_file</span><span class="p">(</span><span class="n">madx</span><span class="p">,</span><span class="w"> </span><span class="n">joinpath</span><span class="p">(</span><span class="s">"lattice_files"</span><span class="p">,</span><span class="w"> </span><span class="s">"bta.pals_out.madx"</span><span class="p">))</span>
 
-<span class="n">scibmad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pals_to_scibmad</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span><span class="n">joinpath</span><span class="p">(</span><span class="s">&quot;lattice_files&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;convert.pals.yaml&quot;</span><span class="p">)))</span>
-<span class="n">write_scibmad_file</span><span class="p">(</span><span class="n">scibmad</span><span class="p">,</span><span class="w"> </span><span class="n">joinpath</span><span class="p">(</span><span class="s">&quot;lattice_files&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;convert.pals_out.jl&quot;</span><span class="p">))</span>
+<span class="n">scibmad</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pals_to_scibmad</span><span class="p">(</span><span class="n">parse_file</span><span class="p">(</span><span class="n">joinpath</span><span class="p">(</span><span class="s">"lattice_files"</span><span class="p">,</span><span class="w"> </span><span class="s">"convert.pals.yaml"</span><span class="p">)))</span>
+<span class="n">write_scibmad_file</span><span class="p">(</span><span class="n">scibmad</span><span class="p">,</span><span class="w"> </span><span class="n">joinpath</span><span class="p">(</span><span class="s">"lattice_files"</span><span class="p">,</span><span class="w"> </span><span class="s">"convert.pals_out.jl"</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>The <a class="reference external" href="https://github.com/pals-project/PALSParserJ.jl/tree/main/examples"><code class="docutils literal notranslate"><span class="pre">examples/</span></code></a>
@@ -321,7 +321,7 @@ almost every element. The ones that shape the whole translation:</p>
 <ul class="simple">
 <li><p><strong>Every MAD-X strength is normalized.</strong> MAD-X has no field-valued attribute at
 all, where Bmad has <code class="docutils literal notranslate"><span class="pre">field_master</span></code> and <code class="docutils literal notranslate"><span class="pre">B1_GRADIENT</span></code>. A PALS component stated as
-a field (<code class="docutils literal notranslate"><span class="pre">Bn1</span></code>, <code class="docutils literal notranslate"><span class="pre">Bsol</span></code>, <code class="docutils literal notranslate"><span class="pre">bend_field_ref</span></code>) is therefore divided by the signed
+a field (<code class="docutils literal notranslate"><span class="pre">Bn1</span></code>, <code class="docutils literal notranslate"><span class="pre">Bsol</span></code>, <code class="docutils literal notranslate"><span class="pre">Bn0_ref</span></code>) is therefore divided by the signed
 rigidity <code class="docutils literal notranslate"><span class="pre">P0/q</span></code>, which the file defines once as
 <code class="docutils literal notranslate"><span class="pre">pals_brho</span> <span class="pre">:=</span> <span class="pre">beam-&gt;brho</span> <span class="pre">*</span> <span class="pre">beam-&gt;charge</span> <span class="pre">/</span> <span class="pre">abs(beam-&gt;charge);</span></code> and leaves MAD-X to
 evaluate from its own <code class="docutils literal notranslate"><span class="pre">BEAM</span></code> command.</p></li>
@@ -355,7 +355,7 @@ delta. MAD-X variables are global where a PALS controller’s are its own, so a 
 two controllers both claim is prefixed with the controller that owns it.</p></li>
 <li><p><strong>MAD-X units are not PALS units.</strong> Energies are GeV against eV, voltages MV
 against V, frequencies MHz against Hz, and phases are counted in turns where PALS
-counts Twiss phases in radians. A value written as a number is converted during
+counts them in radians. A value written as a number is converted during
 translation; one written as an expression is left for MAD-X to evaluate.</p></li>
 <li><p><strong>The longitudinal coordinate is measured against the energy.</strong> MAD-X’s <code class="docutils literal notranslate"><span class="pre">T</span></code>, <code class="docutils literal notranslate"><span class="pre">PT</span></code>
 and its dispersion are derivatives with respect to <code class="docutils literal notranslate"><span class="pre">pt</span> <span class="pre">=</span> <span class="pre">dE/(p0</span> <span class="pre">c)</span></code> where PALS
@@ -388,11 +388,12 @@ and their SciBmad/Bmad/MAD-X equivalents.</p>
 <li><p>Mask –&gt; collimator</p></li>
 <li><p>Instrument –&gt; instrument</p></li>
 <li><p>Marker, BeginningEle –&gt; marker</p></li>
-<li><p>Placeholder –&gt; placeholder</p></li>
 <li><p>Patch –&gt; changeref</p></li>
 <li><p>Taylor –&gt; matrix (the map itself is not yet translated)</p></li>
 <li><p>ACKicker, Wiggler, Converter, EGun, Foil, Match, Fiducial, FloorShift, Fork,
-ReferenceChange, Girder, UnionEle, Feedback –&gt; no MAD-X equivalent (an error)</p></li>
+ReferenceChange, UnionEle, Feedback –&gt; no MAD-X equivalent (an error)</p></li>
+<li><p>Placeholder –&gt; dropped from every line, as lattice expansion drops it, in all
+three formats</p></li>
 </ul>
 </section>
 <section id="ackickerp-none">
@@ -531,6 +532,18 @@ where PALS rotates about its centre, so the two agree only to first order.</p></
 <section id="coordinatesetp-set-in-floor-shift-element-to-be-added-to-scibmad">
 <h3>CoordinateSetP –&gt; Set in floor shift element (to be added to scibmad)<a class="headerlink" href="#coordinatesetp-set-in-floor-shift-element-to-be-added-to-scibmad" title="Link to this heading">¶</a></h3>
 <ul class="simple">
+<li><p>Note (Bmad): a <code class="docutils literal notranslate"><span class="pre">FloorShift</span></code> becomes a <code class="docutils literal notranslate"><span class="pre">floor_shift</span></code> and a <code class="docutils literal notranslate"><span class="pre">Fiducial</span></code> a <code class="docutils literal notranslate"><span class="pre">fiducial</span></code>.
+<code class="docutils literal notranslate"><span class="pre">origin_ele</span></code> and <code class="docutils literal notranslate"><span class="pre">origin_ele_ref_pt</span></code> carry over (PALS defaults to <code class="docutils literal notranslate"><span class="pre">EXIT_END</span></code>, Bmad to
+<code class="docutils literal notranslate"><span class="pre">center</span></code>, so the reference point is always written). The CoordinateSetP shift and the
+element’s BodyShiftP together place the element, and become one Bmad shift: the patch
+attributes <code class="docutils literal notranslate"><span class="pre">x_offset</span></code>, …, <code class="docutils literal notranslate"><span class="pre">x_pitch</span> <span class="pre">=</span> <span class="pre">y_rot</span></code>, <code class="docutils literal notranslate"><span class="pre">y_pitch</span> <span class="pre">=</span> <span class="pre">-x_rot</span></code>, <code class="docutils literal notranslate"><span class="pre">tilt</span> <span class="pre">=</span> <span class="pre">z_rot</span></code> for a
+<code class="docutils literal notranslate"><span class="pre">floor_shift</span></code>, and <code class="docutils literal notranslate"><span class="pre">dx_origin</span></code>, …, <code class="docutils literal notranslate"><span class="pre">dtheta_origin</span> <span class="pre">=</span> <span class="pre">y_rot</span></code>, <code class="docutils literal notranslate"><span class="pre">dphi_origin</span> <span class="pre">=</span> <span class="pre">-x_rot</span></code>,
+<code class="docutils literal notranslate"><span class="pre">dpsi_origin</span> <span class="pre">=</span> <span class="pre">z_rot</span></code> for a <code class="docutils literal notranslate"><span class="pre">fiducial</span></code>. When the CoordinateSetP shift rotates as well as
+the BodyShiftP shifts, the two are composed numerically, which needs numbers.</p></li>
+<li><p>Note (Bmad): origin <code class="docutils literal notranslate"><span class="pre">PREVIOUS_ELEMENT</span></code> is Bmad’s own default for a <code class="docutils literal notranslate"><span class="pre">floor_shift</span></code> and has
+no meaning for a <code class="docutils literal notranslate"><span class="pre">fiducial</span></code> (an error). <code class="docutils literal notranslate"><span class="pre">GLOBAL_ORIGIN</span></code> is Bmad’s default for a <code class="docutils literal notranslate"><span class="pre">fiducial</span></code>;
+a <code class="docutils literal notranslate"><span class="pre">floor_shift</span></code> has no such setting and is placed from Bmad’s <code class="docutils literal notranslate"><span class="pre">beginning</span></code> element, which
+is an error when the lattice moves the beginning element off the origin.</p></li>
 <li><p>Note (MAD-X): MAD-X has no element that sets the global coordinates of the reference
 curve, so the group is an error. <code class="docutils literal notranslate"><span class="pre">FloorShift</span></code> and <code class="docutils literal notranslate"><span class="pre">Fiducial</span></code>, the two kinds that
 carry it, have no MAD-X equivalent either.</p></li>
@@ -539,8 +552,18 @@ carry it, have no MAD-X equivalent either.</p></li>
 <section id="forkp-needs-to-be-implemented-in-scibmad">
 <h3>ForkP –&gt; Needs to be Implemented in scibmad<a class="headerlink" href="#forkp-needs-to-be-implemented-in-scibmad" title="Link to this heading">¶</a></h3>
 </section>
-<section id="girderp-in-contruction">
-<h3>GirderP In Contruction<a class="headerlink" href="#girderp-in-contruction" title="Link to this heading">¶</a></h3>
+<section id="girders-pals-girders-girderp">
+<h3>Girders (<code class="docutils literal notranslate"><span class="pre">PALS:</span> <span class="pre">girders</span></code>, GirderP)<a class="headerlink" href="#girders-pals-girders-girderp" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>Note (Bmad): each girder becomes a Bmad <code class="docutils literal notranslate"><span class="pre">girder</span></code>, written after any girder it supports as
+Bmad requires. <code class="docutils literal notranslate"><span class="pre">GirderP.elements</span></code> becomes the slave list, which Bmad takes either as
+element names or as one <code class="docutils literal notranslate"><span class="pre">start:end</span></code> range; any other element set is an error. The
+CoordinateSetP origin becomes <code class="docutils literal notranslate"><span class="pre">origin_ele</span></code> (<code class="docutils literal notranslate"><span class="pre">GLOBAL_ORIGIN</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">global_coordinates</span></code>) and
+its shift the <code class="docutils literal notranslate"><span class="pre">d*_origin</span></code> attributes; the BodyShiftP becomes the girder’s offsets, pitches
+and tilt.</p></li>
+<li><p>Note (MAD-X): MAD-X has no girders, so <code class="docutils literal notranslate"><span class="pre">PALS:</span> <span class="pre">girders</span></code> is an error.</p></li>
+<li><p>Note (SciBmad): SciBmad has no girders; they are not translated.</p></li>
+</ul>
 </section>
 <section id="magneticmultipolep-bmultipoleparams">
 <h3>MagneticMultipoleP –&gt; BMultipoleParams<a class="headerlink" href="#magneticmultipolep-bmultipoleparams" title="Link to this heading">¶</a></h3>
@@ -658,7 +681,7 @@ change it in mid-line, so the whole group is an error.</p></li>
 <li><p>if neither frequency or harmon exist, set rate_meaning = -1</p></li>
 <li><p>voltage –&gt; voltage</p></li>
 <li><p>gradient –&gt; none</p></li>
-<li><p>phase –&gt; phi0</p></li>
+<li><p>phase –&gt; phi0 (both in radians)</p></li>
 <li><p>multipass_phase –&gt; none</p></li>
 <li><p>cavity_type –&gt; traveling_wave</p>
 <ul>
@@ -676,11 +699,13 @@ change it in mid-line, so the whole group is an error.</p></li>
 </li>
 <li><p>Note (MAD-X): frequency –&gt; <code class="docutils literal notranslate"><span class="pre">freq</span></code> in MHz, harmon –&gt; <code class="docutils literal notranslate"><span class="pre">harmon</span></code>,
 voltage –&gt; <code class="docutils literal notranslate"><span class="pre">volt</span></code> in MV, gradient –&gt; <code class="docutils literal notranslate"><span class="pre">volt</span> <span class="pre">=</span> <span class="pre">gradient</span> <span class="pre">*</span> <span class="pre">L_active</span></code>.</p></li>
-<li><p>Note (MAD-X): phase –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span></code>, offset by what <code class="docutils literal notranslate"><span class="pre">zero_phase</span></code> measures from. MAD-X’s
-zero lag is the zero crossing half a period from the one Bmad and PALS call the
-stable point above transition (<code class="docutils literal notranslate"><span class="pre">phi0</span> <span class="pre">=</span> <span class="pre">lag</span> <span class="pre">+</span> <span class="pre">0.5</span></code>), so
-ABOVE_TRANSITION –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span> <span class="pre">=</span> <span class="pre">phase</span> <span class="pre">-</span> <span class="pre">0.5</span></code>, BELOW_TRANSITION –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span> <span class="pre">=</span> <span class="pre">phase</span></code>, and
-ACCELERATING –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span> <span class="pre">=</span> <span class="pre">phase</span> <span class="pre">-</span> <span class="pre">0.25</span></code>.</p></li>
+<li><p>Note (Bmad): phase –&gt; <code class="docutils literal notranslate"><span class="pre">phi0</span> <span class="pre">=</span> <span class="pre">phase</span> <span class="pre">/</span> <span class="pre">twopi</span></code> and multipass_phase –&gt;
+<code class="docutils literal notranslate"><span class="pre">phi0_multipass</span> <span class="pre">=</span> <span class="pre">multipass_phase</span> <span class="pre">/</span> <span class="pre">twopi</span></code>, Bmad counting RF phases in turns.</p></li>
+<li><p>Note (MAD-X): phase –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span></code> in turns, offset by what <code class="docutils literal notranslate"><span class="pre">zero_phase</span></code> measures from.
+MAD-X’s zero lag is the zero crossing half a period from the one Bmad and PALS call
+the stable point above transition (<code class="docutils literal notranslate"><span class="pre">phi0</span> <span class="pre">=</span> <span class="pre">lag</span> <span class="pre">+</span> <span class="pre">0.5</span></code>), so
+ABOVE_TRANSITION –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span> <span class="pre">=</span> <span class="pre">phase/2pi</span> <span class="pre">-</span> <span class="pre">0.5</span></code>, BELOW_TRANSITION –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span> <span class="pre">=</span> <span class="pre">phase/2pi</span></code>,
+and ACCELERATING –&gt; <code class="docutils literal notranslate"><span class="pre">lag</span> <span class="pre">=</span> <span class="pre">phase/2pi</span> <span class="pre">-</span> <span class="pre">0.25</span></code>.</p></li>
 <li><p>Note (MAD-X): a TRAVELING_WAVE cavity is MAD-X’s <code class="docutils literal notranslate"><span class="pre">twcavity</span></code>, which only PTC
 tracks, so it is translated as an <code class="docutils literal notranslate"><span class="pre">rfcavity</span></code> with a warning; <code class="docutils literal notranslate"><span class="pre">multipass_phase</span></code>,
 <code class="docutils literal notranslate"><span class="pre">num_cells</span></code>, <code class="docutils literal notranslate"><span class="pre">L_active</span></code> and <code class="docutils literal notranslate"><span class="pre">dE_ref</span></code> have no equivalent.</p></li>
@@ -791,7 +816,7 @@ multipole or selecting its slaves by pattern.</p></li>
 <li><p>names of fundamental constants</p></li>
 <li><p>names of functions (tan)</p></li>
 <li><p>sinc –&gt; sincu</p></li>
-<li><p>MAD-X: <code class="docutils literal notranslate"><span class="pre">ElectricMultipoleP</span></code>, <code class="docutils literal notranslate"><span class="pre">FloorP</span></code>, <code class="docutils literal notranslate"><span class="pre">ForkP</span></code>, <code class="docutils literal notranslate"><span class="pre">GirderP</span></code> and <code class="docutils literal notranslate"><span class="pre">TaylorP</span></code></p></li>
+<li><p>MAD-X: <code class="docutils literal notranslate"><span class="pre">ElectricMultipoleP</span></code>, <code class="docutils literal notranslate"><span class="pre">FloorP</span></code>, <code class="docutils literal notranslate"><span class="pre">ForkP</span></code> and <code class="docutils literal notranslate"><span class="pre">TaylorP</span></code></p></li>
 </ul>
 </section>
 </section>
@@ -860,7 +885,7 @@ multipole or selecting its slaves by pattern.</p></li>
 <li><a class="reference internal" href="#floorp-calculated">FloorP –&gt; Calculated</a></li>
 <li><a class="reference internal" href="#coordinatesetp-set-in-floor-shift-element-to-be-added-to-scibmad">CoordinateSetP –&gt; Set in floor shift element (to be added to scibmad)</a></li>
 <li><a class="reference internal" href="#forkp-needs-to-be-implemented-in-scibmad">ForkP –&gt; Needs to be Implemented in scibmad</a></li>
-<li><a class="reference internal" href="#girderp-in-contruction">GirderP In Contruction</a></li>
+<li><a class="reference internal" href="#girders-pals-girders-girderp">Girders (<code class="docutils literal notranslate"><span class="pre">PALS:</span> <span class="pre">girders</span></code>, GirderP)</a></li>
 <li><a class="reference internal" href="#magneticmultipolep-bmultipoleparams">MagneticMultipoleP –&gt; BMultipoleParams</a></li>
 <li><a class="reference internal" href="#metap-metaparams">MetaP –&gt; MetaParams</a></li>
 <li><a class="reference internal" href="#particlep-create-new-bunch">ParticleP –&gt; Create new bunch</a></li>

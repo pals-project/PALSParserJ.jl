@@ -265,14 +265,14 @@ can be used by their bare names:</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">PALSParserJ</span>
 <span class="n">export_manipulators</span><span class="p">()</span>
 
-<span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_file</span><span class="p">(</span><span class="s">&quot;config.pals.yaml&quot;</span><span class="p">)</span>
+<span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_file</span><span class="p">(</span><span class="s">"config.pals.yaml"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If you would rather <strong>not</strong> pull those extra symbols into your namespace, skip
 <code class="docutils literal notranslate"><span class="pre">export_manipulators()</span></code> and instead import the package under an alias:</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="n">PALSParserJ</span><span class="w"> </span><span class="n">as</span><span class="w"> </span><span class="n">pj</span>
 
-<span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pj</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="s">&quot;config.pals.yaml&quot;</span><span class="p">)</span>
+<span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pj</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="s">"config.pals.yaml"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>and prefix each call, e.g. <code class="docutils literal notranslate"><span class="pre">pj.parse_file(...)</span></code>. The rest of this guide assumes
@@ -305,16 +305,16 @@ tree root:</p>
 </tbody>
 </table>
 </div>
-<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_file</span><span class="p">(</span><span class="s">&quot;config.pals.yaml&quot;</span><span class="p">)</span>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_file</span><span class="p">(</span><span class="s">"config.pals.yaml"</span><span class="p">)</span>
 <span class="c"># or</span>
-<span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_string</span><span class="p">(</span><span class="s">&quot;&quot;&quot;</span>
+<span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parse_string</span><span class="p">(</span><span class="s">"""</span>
 <span class="s">server:</span>
 <span class="s">  host: localhost</span>
 <span class="s">  port: 8080</span>
 <span class="s">features:</span>
 <span class="s">  - auth</span>
 <span class="s">  - logging</span>
-<span class="s">&quot;&quot;&quot;</span><span class="p">)</span>
+<span class="s">"""</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">parse_and_expand_pals</span></code> is PALS-specific: it returns a <code class="docutils literal notranslate"><span class="pre">Lattices</span></code> value holding
@@ -389,19 +389,19 @@ structure. None of them modify the document.</p>
 </tbody>
 </table>
 </div>
-<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">haskey</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;features&quot;</span><span class="p">)</span><span class="w">          </span><span class="c"># true</span>
-<span class="n">length</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">&quot;features&quot;</span><span class="p">])</span><span class="w">          </span><span class="c"># 2</span>
-<span class="n">keys</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">&quot;server&quot;</span><span class="p">])</span><span class="w">              </span><span class="c"># [&quot;host&quot;, &quot;port&quot;]</span>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">haskey</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="s">"features"</span><span class="p">)</span><span class="w">          </span><span class="c"># true</span>
+<span class="n">length</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">"features"</span><span class="p">])</span><span class="w">          </span><span class="c"># 2</span>
+<span class="n">keys</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">"server"</span><span class="p">])</span><span class="w">              </span><span class="c"># ["host", "port"]</span>
 
-<span class="k">for</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">root</span><span class="p">[</span><span class="s">&quot;features&quot;</span><span class="p">]</span>
+<span class="k">for</span><span class="w"> </span><span class="n">item</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">root</span><span class="p">[</span><span class="s">"features"</span><span class="p">]</span>
 <span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="kt">String</span><span class="p">(</span><span class="n">item</span><span class="p">))</span><span class="w">         </span><span class="c"># auth, logging</span>
 <span class="k">end</span>
 
-<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">root</span><span class="p">[</span><span class="s">&quot;server&quot;</span><span class="p">]</span>
-<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="s">&quot; =&gt; &quot;</span><span class="p">,</span><span class="w"> </span><span class="kt">String</span><span class="p">(</span><span class="n">v</span><span class="p">))</span><span class="w"> </span><span class="c"># host =&gt; localhost, port =&gt; 8080</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">root</span><span class="p">[</span><span class="s">"server"</span><span class="p">]</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="s">" =&gt; "</span><span class="p">,</span><span class="w"> </span><span class="kt">String</span><span class="p">(</span><span class="n">v</span><span class="p">))</span><span class="w"> </span><span class="c"># host =&gt; localhost, port =&gt; 8080</span>
 <span class="k">end</span>
 
-<span class="n">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_parent</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">&quot;server&quot;</span><span class="p">])</span><span class="w">   </span><span class="c"># back up to the root</span>
+<span class="n">parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_parent</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">"server"</span><span class="p">])</span><span class="w">   </span><span class="c"># back up to the root</span>
 </pre></div>
 </div>
 </section>
@@ -431,8 +431,8 @@ structure. None of them modify the document.</p>
 </tbody>
 </table>
 </div>
-<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">String</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">&quot;server&quot;</span><span class="p">][</span><span class="s">&quot;host&quot;</span><span class="p">])</span><span class="w">   </span><span class="c"># &quot;localhost&quot;</span>
-<span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">Int</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">&quot;server&quot;</span><span class="p">][</span><span class="s">&quot;port&quot;</span><span class="p">])</span><span class="w">       </span><span class="c"># 8080</span>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">String</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">"server"</span><span class="p">][</span><span class="s">"host"</span><span class="p">])</span><span class="w">   </span><span class="c"># "localhost"</span>
+<span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kt">Int</span><span class="p">(</span><span class="n">root</span><span class="p">[</span><span class="s">"server"</span><span class="p">][</span><span class="s">"port"</span><span class="p">])</span><span class="w">       </span><span class="c"># 8080</span>
 </pre></div>
 </div>
 </section>
@@ -487,13 +487,13 @@ elements. <code class="docutils literal notranslate"><span class="pre">index</sp
 defaults to <code class="docutils literal notranslate"><span class="pre">nothing</span></code>, which appends at the end, so you usually leave it out.</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">create_empty_tree</span><span class="p">()</span>
 
-<span class="n">server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">add_map!</span><span class="p">(</span><span class="n">root</span><span class="p">;</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;server&quot;</span><span class="p">)</span>
-<span class="n">server</span><span class="p">[</span><span class="s">&quot;host&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;localhost&quot;</span>
-<span class="n">server</span><span class="p">[</span><span class="s">&quot;port&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;8080&quot;</span>
+<span class="n">server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">add_map!</span><span class="p">(</span><span class="n">root</span><span class="p">;</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"server"</span><span class="p">)</span>
+<span class="n">server</span><span class="p">[</span><span class="s">"host"</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"localhost"</span>
+<span class="n">server</span><span class="p">[</span><span class="s">"port"</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"8080"</span>
 
-<span class="n">features</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">add_sequence!</span><span class="p">(</span><span class="n">root</span><span class="p">;</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;features&quot;</span><span class="p">)</span>
-<span class="n">add_scalar!</span><span class="p">(</span><span class="n">features</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;auth&quot;</span><span class="p">)</span>
-<span class="n">add_scalar!</span><span class="p">(</span><span class="n">features</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;logging&quot;</span><span class="p">)</span>
+<span class="n">features</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">add_sequence!</span><span class="p">(</span><span class="n">root</span><span class="p">;</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"features"</span><span class="p">)</span>
+<span class="n">add_scalar!</span><span class="p">(</span><span class="n">features</span><span class="p">,</span><span class="w"> </span><span class="s">"auth"</span><span class="p">)</span>
+<span class="n">add_scalar!</span><span class="p">(</span><span class="n">features</span><span class="p">,</span><span class="w"> </span><span class="s">"logging"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">deep_copy_node!</span></code> / <code class="docutils literal notranslate"><span class="pre">deep_copy_children!</span></code> pair works across different trees,
@@ -520,16 +520,16 @@ so you can graft one subtree onto another.</p>
 </table>
 </div>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">to_yaml_string</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="w">     </span><span class="c"># YAML as a String</span>
-<span class="n">write_yaml</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;out.pals.yaml&quot;</span><span class="p">)</span>
+<span class="n">write_yaml</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="s">"out.pals.yaml"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Both take an <code class="docutils literal notranslate"><span class="pre">exclude</span></code> keyword naming keys to leave out, which is handy for
 printing or saving a large lattice without the bulky subtrees.  Every MAP entry
 with a matching key is dropped, at any depth, together with its subtree; the
 tree in memory is not modified.</p>
-<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">println</span><span class="p">(</span><span class="n">to_yaml_string</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;FloorP&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ReferenceP&quot;</span><span class="p">]))</span>
-<span class="n">println</span><span class="p">(</span><span class="n">to_yaml_string</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;FloorP&quot;</span><span class="p">))</span><span class="w">   </span><span class="c"># a single key needs no vector</span>
-<span class="n">write_yaml</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;out.pals.yaml&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;FloorP&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ReferenceP&quot;</span><span class="p">])</span>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="n">println</span><span class="p">(</span><span class="n">to_yaml_string</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">"FloorP"</span><span class="p">,</span><span class="w"> </span><span class="s">"ReferenceP"</span><span class="p">]))</span>
+<span class="n">println</span><span class="p">(</span><span class="n">to_yaml_string</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"FloorP"</span><span class="p">))</span><span class="w">   </span><span class="c"># a single key needs no vector</span>
+<span class="n">write_yaml</span><span class="p">(</span><span class="n">root</span><span class="p">,</span><span class="w"> </span><span class="s">"out.pals.yaml"</span><span class="p">,</span><span class="w"> </span><span class="n">exclude</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">"FloorP"</span><span class="p">,</span><span class="w"> </span><span class="s">"ReferenceP"</span><span class="p">])</span>
 </pre></div>
 </div>
 <p>See the <strong>API Reference</strong> (linked in the sidebar) for the full list of functions
