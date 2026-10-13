@@ -1210,23 +1210,17 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
       error("$(node_key(props)): BeamBeamP not translated yet")
     elseif key == "BendP"
       bendP = props["BendP"]
-      has_e1 = haskey(bendP, "e1");  has_e1_rect  = haskey(bendP, "e1_rect");
-      has_e2 = haskey(bendP, "e2");  has_e2_rect  = haskey(bendP, "e2_rect");
-      if (has_e1 || has_e2) && (has_e1_rect || has_e2_rect)
-        error("$(node_key(props)): should not have both e1 and e1_rect, nor both e2 and e2_rect")
-      end
-
       for bkey in keys(bendP)
         tmp = ""
-        if bkey == "radius_ref"
+        if bkey == "angle_ref"
+          tmp *= "angle = $(String(bendP["angle_ref"])),"
+        elseif bkey == "radius_ref"
           tmp *= "rho = $(String(bendP["radius_ref"])),"
         elseif bkey == "Bn0_ref"
           tmp *= "B_field = $(String(bendP["Bn0_ref"])),"
 
-        elseif bkey == "e1" || bkey == "e1_rect"
-          tmp *= "e1 = $(String(bendP["e1"])),"
-        elseif bkey == "e2" || bkey == "e2_rect"
-          tmp *= "e2 = $(String(bendP["e2"])),"
+        elseif bkey in ("e1", "e1_rect", "e2", "e2_rect")
+          tmp *= _bmad_bend_face(props, bkey, node_key(props)) * ","
 
         elseif bkey == "edge1_int"
           val = Float64(bendP["edge1_int"])
@@ -1396,15 +1390,12 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
         elseif rfkey == "voltage"
           tmp *= "voltage = $(String(rfP["voltage"])),"
 
+        # Bmad's `gradient` is a dependent attribute, so the voltage is stated instead.
         elseif rfkey == "gradient"
-          if haskey(props, "L") && props["L"] != 0
-            L = props["L"]
-            grad = Float64(rfP["gradient"])
-            tmp *= "voltage = $(grad*L),"
-            println("$(node_key(props)): gradient not yet supported, replacing with voltage = gradient * length")
-          else
-            error("$(node_key(props)): `gradient` not yet supported & `length` is undefined => voltage is undefined")
-          end
+          L = haskey(rfP, "L_active") ? String(rfP["L_active"]) :
+              haskey(props, "length") ? String(props["length"]) :
+              error("$(node_key(props)): `gradient` needs a length to become the voltage Bmad states")
+          tmp *= "voltage = $(_madx_times(String(rfP["gradient"]), L)),"
 
         # PALS states RF phases in radians, Bmad in turns.
         elseif rfkey == "phase"
@@ -1749,4 +1740,70 @@ function _make_bmad_girders(girders::YAMLNode)
     push!(out, BmadEleDef(gname, "girder = $slaves", attrs))
   end
   return out
+end
+
+#---------------------------------------------------------------------------------------------------
+"""
+    _bmad_bend_angle(props::YAMLNode, name::String)
+
+Return the reference bend angle of a `Bend` as Bmad text, or `nothing` if the element states too
+little to work it out.
+
+PALS states the bend geometry with any two of a curvature (`g_ref`, `radius_ref`), a length
+(`length`, `L_chord`, `L_rectangle`) and the angle (`angle_ref`). A curvature given as the field
+`Bn0_ref` needs the reference rigidity and is not used here.
+"""
+function _bmad_bend_angle(props::YAMLNode, name::String)
+  bendP = props["BendP"]
+  haskey(bendP, "angle_ref") && return String(bendP["angle_ref"])
+  g = haskey(bendP, "g_ref")      ? String(bendP["g_ref"]) :
+      haskey(bendP, "radius_ref") ? _madx_fold("1 / ($(String(bendP["radius_ref"])))",
+                                               r -> 1 / r, String(bendP["radius_ref"])) : nothing
+  g === nothing && return nothing
+  if haskey(props, "length")
+    return _madx_times(g, String(props["length"]))
+  elseif haskey(bendP, "L_chord")
+    len = String(bendP["L_chord"])
+    return _madx_fold("2 * asin(($g) * ($len) / 2)", (a, b) -> 2asin(a * b / 2), g, len)
+  elseif haskey(bendP, "L_rectangle")
+    len = String(bendP["L_rectangle"])
+    return _madx_fold("asin(($g) * ($len))", (a, b) -> asin(a * b), g, len)
+  end
+  return nothing
+end
+
+#---------------------------------------------------------------------------------------------------
+"""
+    _bmad_bend_face(props::YAMLNode, key::String, name::String)
+
+Return the Bmad `e1`/`e2` fragment for the PALS pole-face parameter `key` of a `Bend`.
+
+A Bmad `sbend` measures its face angles against the sector geometry, as PALS' own `e1` and `e2`
+are, so those come straight across. PALS' `e1_rect` and `e2_rect` are measured against fiducial
+lines parallel to each other, and the bend angle separates the two pairs by a share that depends
+on `ref_geometry` (bend.md):
+
+    ARC, CHORD        e1 = e1_rect + angle/2,   e2 = e2_rect + angle/2
+    ENTRANCE_COORDS   e1 = e1_rect,             e2 = e2_rect + angle
+    EXIT_COORDS       e1 = e1_rect + angle,     e2 = e2_rect
+
+A face given both ways is contradictory, and one given the rectangular way on a bend whose angle
+cannot be worked out cannot be converted; both raise an error.
+"""
+function _bmad_bend_face(props::YAMLNode, key::String, name::String)
+  bendP = props["BendP"]
+  face = key[1:2]
+  haskey(bendP, face) && haskey(bendP, face * "_rect") &&
+      error("$name: should not have both $face and $(face)_rect")
+  endswith(key, "_rect") || return "$face = $(String(bendP[key]))"
+
+  geometry = haskey(bendP, "ref_geometry") ? String(bendP["ref_geometry"]) : "ARC"
+  share = geometry == "ENTRANCE_COORDS" ? (face == "e1" ? 0.0 : 1.0) :
+          geometry == "EXIT_COORDS"     ? (face == "e1" ? 1.0 : 0.0) : 0.5
+  rect = String(bendP[key])
+  share == 0 && return "$face = $rect"
+  angle = _bmad_bend_angle(props, name)
+  angle === nothing &&
+      error("$name: $key is measured against the bend angle, which is not given")
+  return "$face = " * _madx_fold("$rect + $share * ($angle)", (r, a) -> r + share * a, rect, angle)
 end
