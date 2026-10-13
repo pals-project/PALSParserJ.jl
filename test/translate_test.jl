@@ -545,6 +545,84 @@ const _WRONG_KIND_FIXTURE =
 const _BEAMLINE_QUALIFIED_FIXTURE =
     replace(_CONTROLLER_FIXTURE, "parameter: q1>" => "parameter: ring>>q1>")
 
+# A FloorShift, a Fiducial and two girders, one supporting the other, plus a Placeholder that
+# Bmad never sees and an RF phase in radians.
+const _PLACEMENT_FIXTURE = """
+  PALS:
+    facility:
+      - beg:
+          kind: BeginningEle
+          ReferenceP:
+            species_ref: electron
+            pc_ref: 3E9
+      - q1:
+          kind: Quadrupole
+          length: 0.5
+      - q2:
+          kind: Quadrupole
+          length: 0.5
+      - fs:
+          kind: FloorShift
+          CoordinateSetP:
+            origin_ele: PREVIOUS_ELEMENT
+            x_offset: 0.5
+            x_rot: 0.01
+      - fid:
+          kind: Fiducial
+          CoordinateSetP:
+            origin_ele: q1
+            origin_ele_ref_pt: ENTRANCE_END
+            y_offset: 1
+          BodyShiftP:
+            z_rot: 0.2
+      - fs_global:
+          kind: FloorShift
+          BodyShiftP:
+            z_offset: 10
+      - ph:
+          kind: Placeholder
+      - rf1:
+          kind: RFCavity
+          length: 1.3
+          RFP:
+            voltage: 1E6
+            harmon: 10
+            phase: pi/2
+            multipass_phase: 0.5
+            zero_phase: BELOW_TRANSITION
+      - ring:
+          kind: BeamLine
+          line:
+            - beg
+            - q1
+            - ph
+            - q2
+            - fs
+            - fid
+            - fs_global
+            - rf1
+      - lat:
+          kind: Lattice
+          branches:
+            - ring
+    girders:
+      inner:
+        kind: Girder
+        GirderP:
+          elements: q1:q2
+        BodyShiftP:
+          x_offset: 0.001
+      outer:
+        kind: Girder
+        GirderP:
+          elements: inner, fid
+        CoordinateSetP:
+          origin_ele: q2
+          z_offset: 0.25
+        BodyShiftP:
+          x_rot: 0.003
+  """
+
 # Writes `text` to a file in `dir` and returns the parsed tree.
 _parsed(dir, text) = (path = joinpath(dir, "fixture.pals.yaml");
                       write(path, text); parse_file(path))
@@ -1081,10 +1159,11 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
       # Which is also why the EALIGN can only come after the sequence has been expanded.
       @test findfirst("use, period = ring;", out).start < findfirst("ealign,", out).start
 
-      # MAD-X states a frequency in MHz and a voltage in MV where PALS states Hz and volts,
-      # and its zero lag is half a period from the stable point above transition.
+      # MAD-X states a frequency in MHz, a voltage in MV and a phase in turns where PALS states
+      # Hz, volts and radians, and its zero lag is half a period from the stable point above
+      # transition.
       @test occursin("rf1: rfcavity,\n\tl = 1.3,\n\tfreq = 500.0,\n\tvolt = 1.0," *
-                     "\n\tlag = -0.4;", out)
+                     "\n\tlag = -0.48408450569081046;", out)
 
       # A branch that closes on itself is not something MAD-X states in the lattice.
       @test occursin("use, period = ring;\t! closed", out)
@@ -1187,6 +1266,56 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
       out = _bmad_text(dir, pals_to_bmad(_parsed(dir, _MADX_CLASH_FIXTURE)))
       @test occursin("parameter[geometry] = closed", out)
       @test !occursin("parameter[geometry] = open", out)
+    end
+  end
+
+
+  @testset "FloorShift, Fiducial and girders become their Bmad counterparts" begin
+    mktempdir() do dir
+      out = _bmad_text(dir, pals_to_bmad(_parsed(dir, _PLACEMENT_FIXTURE)))
+
+      # Bmad's floor_shift defaults to the previous element; its pitch about x turns the other
+      # way from PALS's x_rot.
+      @test occursin("fs: Floor_Shift,\n\tx_offset = 0.5,\n\ty_pitch = -0.01\n", out)
+      # A fiducial's CoordinateSetP and BodyShiftP shifts are one Bmad origin shift.
+      @test occursin("fid: Fiducial,\n\torigin_ele = q1,\n\torigin_ele_ref_pt = entrance_end," *
+                     "\n\tdy_origin = 1,\n\tdpsi_origin = 0.2\n", out)
+      # A floor_shift placed from the global origin starts from Bmad's beginning element.
+      @test occursin("fs_global: Floor_Shift,\n\torigin_ele = beginning," *
+                     "\n\torigin_ele_ref_pt = exit_end,\n\tz_offset = 10\n", out)
+
+      # The supported girder comes first, as Bmad needs.
+      @test occursin("inner: girder = {q1:q2},\n\torigin_ele = global_coordinates," *
+                     "\n\tx_offset = 0.001\n", out)
+      @test occursin("outer: girder = {inner, fid},\n\torigin_ele = q2," *
+                     "\n\torigin_ele_ref_pt = exit_end,\n\tdz_origin = 0.25," *
+                     "\n\ty_pitch = -0.003\n", out)
+      @test findfirst("inner: girder", out).start < findfirst("outer: girder", out).start
+
+      # The Placeholder is gone from the line, and the RF phases are in turns.
+      @test occursin("ring: line = (q1, q2, fs, fid, fs_global, rf1)", out)
+      @test !occursin("ph:", out)
+      @test occursin("phi0 = (pi/2) / twopi", out)
+      @test occursin("phi0_multipass = 0.07957747154594767", out)
+    end
+  end
+
+  @testset "the RF phase is carried over in each format's own units" begin
+    mktempdir() do dir
+      yaml = _parsed(dir, replace(_PLACEMENT_FIXTURE, r"girders:\n(.|\n)*" => ""))
+      # SciBmad, like PALS, states the phase in radians.
+      @test occursin("phi0 = pi/2", _scibmad_text(dir, pals_to_scibmad(yaml)))
+      @test_throws "No FloorShift elements in MAD-X" pals_to_madx(yaml)
+    end
+  end
+
+  @testset "girders MAD-X and Bmad cannot express are reported" begin
+    mktempdir() do dir
+      yaml = _parsed(dir, _PLACEMENT_FIXTURE)
+      @test_throws "MAD-X has no girders" pals_to_madx(yaml)
+
+      pattern = _parsed(dir, replace(_PLACEMENT_FIXTURE, "elements: q1:q2" => "elements: q.*"))
+      @test_throws "neither a list of names nor a single range" pals_to_bmad(pattern)
     end
   end
 

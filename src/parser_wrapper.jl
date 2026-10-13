@@ -3,7 +3,7 @@
 # Wrap a tree handle and return a node pointing to its root.
 function _root_node(handle::Ptr{Cvoid})
   tree    = YAMLTree(handle)
-  root_id = @ccall (libparser()).get_root(handle::Ptr{Cvoid})::Csize_t
+  root_id = @ccall $(_csym(:get_root))(handle::Ptr{Cvoid})::Csize_t
   return YAMLNode(tree, root_id)
 end
 
@@ -11,7 +11,7 @@ end
 # Unlike _root_node, this shares the existing YAMLTree instead of taking
 # ownership of the handle.
 function _tree_root(node::YAMLNode)
-  root_id = @ccall (libparser()).get_root(node.tree.handle::Ptr{Cvoid})::Csize_t
+  root_id = @ccall $(_csym(:get_root))(node.tree.handle::Ptr{Cvoid})::Csize_t
   return YAMLNode(node.tree, root_id)
 end
 
@@ -20,7 +20,7 @@ end
 # — to the error PALSParserJ raises when a parse fails, so the offending line is
 # pinpointed instead of reporting a bare failure.
 function _last_parse_error()
-  ptr = @ccall (libparser()).yaml_last_parse_error()::Cstring
+  ptr = @ccall $(_csym(:yaml_last_parse_error))()::Cstring
   ptr == C_NULL ? "" : unsafe_string(ptr)
 end
 
@@ -40,7 +40,7 @@ function _take_problem_list(pl::ProblemListC)
                        ProblemSeverity(e.severity), ProblemOrigin(e.origin))
     end
   end
-  @ccall (libparser()).free_lattice_problems(pl::ProblemListC)::Cvoid
+  @ccall $(_csym(:free_lattice_problems))(pl::ProblemListC)::Cvoid
   return out
 end
 
@@ -154,7 +154,7 @@ function parse_and_expand_pals(filename::String, root_lattice::String="";
   (problems isa AbstractString || problems === :print || problems === :none) ||
     throw(ArgumentError("`problems` must be :print, :none, or a filename string"))
 
-  handles = @ccall (libparser()).parse_and_expand_PALS(
+  handles = @ccall $(_csym(:parse_and_expand_PALS))(
     filename::Cstring,
     root_lattice::Cstring
   )::LatticesHandle
@@ -217,7 +217,7 @@ evaluate_pals_expression("expr(2 * pi)")         # 6.283…
 """
 function evaluate_pals_expression(expr::AbstractString)
   ok = Ref{Bool}(false)
-  val = @ccall (libparser()).evaluate_pals_expression(
+  val = @ccall $(_csym(:evaluate_pals_expression))(
     String(expr)::Cstring, ok::Ref{Bool})::Cdouble
   ok[] || throw(ArgumentError("Not an evaluable PALS expression: \"$expr\""))
   return val
@@ -285,7 +285,7 @@ function node_correspondence(lat::Lattices)
   et = lat.full_expanded.tree
   lt = lat.adjunct.tree
 
-  cmap = @ccall (libparser()).build_correspondence_map(
+  cmap = @ccall $(_csym(:build_correspondence_map))(
     ot.handle::Ptr{Cvoid}, ct.handle::Ptr{Cvoid}, et.handle::Ptr{Cvoid},
     lt.handle::Ptr{Cvoid})::CorrespondenceMapC
 
@@ -293,7 +293,7 @@ function node_correspondence(lat::Lattices)
     n = Int(cmap.count)
     n == 0 ? NodeLinkC[] : copy(unsafe_wrap(Array, cmap.links, n))
   finally
-    @ccall (libparser()).free_correspondence_map(cmap::CorrespondenceMapC)::Cvoid
+    @ccall $(_csym(:free_correspondence_map))(cmap::CorrespondenceMapC)::Cvoid
   end
 
   # Each participating node is a (tree tag, id) key. A link ties together the
@@ -368,32 +368,40 @@ searched and the returned nodes belong to that same tree.
 
 `match_string` has the form
 
-    [{lattice}>>>][{branch}>>][{kind}::]{name}[>{group}.{sub}. … .{parameter}]
+    {element-set}[>{group}.{sub}. … .{parameter}]
 
+where `{element-set}` is a `,` union of `&` intersections of `:` ranges of
+element names, and an element name is
+
+    [{lattice}>>>][{branch}>>][{kind}::]{name}[#{N}]
+
+The operators bind, tightest first: `>>>`, `>>`, `::`, `#`, `:`, `&`, `,`, `>`.
 `{lattice}`, `{branch}`, and `{name}` are [PCRE2](https://www.pcre.org) patterns
-matched against the whole name (anchored at both ends); `{kind}` is matched
-exactly; the parameter path after the single `>` is matched exactly, key by key.
-An omitted or empty pattern matches any name at that level. `{branch}` matches an
-element if any enclosing BeamLine/Branch name matches, so elements in sub-lines
-are included.
+matched against the whole name; characters inside a `(...)`, `[...]` or `{...}`
+group belong to the pattern. A `{name}` of digits only is the 1-based index of an
+element in its line. `{kind}` is an element kind, `Controller`, or one of the
+MetaP components `alias`, `ID`, `label` and `description`. `#{N}` keeps the N-th
+match, and a range `{a}:{b}` runs from each `a` to the next `b` in the same line.
+The parameter path after the single `>` is matched exactly, key by key, and
+applies to every element of the set.
+
+In an expanded lattice (`lat.expanded`, `lat.full_expanded`) a name reaches the
+elements of the lattice. In a tree holding a `PALS` node (`lat.original`,
+`lat.combined`, `lat.adjunct`, or a file read with `parse_file`) an unqualified
+name reaches the element definitions under `facility` or `post_expansion`, and
+only a `{branch}>>` qualified name reaches the elements written in a beamline's
+`line`.
 
 The node returned for each match is whatever the string resolves to: the element
-node (no parameter path), the parameter-group or parameter node (with a path),
-or — for a bare name (no lattice/branch/kind qualifier and no parameter path) —
-additionally each matching constant and variable defined directly under the
-`PALS` or `facility` node (both the full `kind: constant`/`kind: variable` and
-the compact `constants:`/`variables:` forms). Lattice parameters therefore
-include constant and variable names.
+node (no parameter path), or the parameter-group or parameter node (with a
+path). Controllers are matched by `Controller::{name}` and a controller variable
+by `{controller}>{variable}`. A bare name -- one element name with no qualifier
+and no parameter path -- additionally matches each constant and variable of that
+name defined under the `PALS`, `facility` or `post_expansion` node, and each
+controller of that name. Constants, variables and controllers are found in
+`lat.adjunct`, not in `lat.full_expanded`.
 
-Which tree to search follows from that: elements are in `lat.full_expanded`, while
-constants and variables are defined at facility level and so are found in
-`lat.adjunct`. Searching `lat.full_expanded` for a constant matches nothing, since
-the `PALS`/`facility` node it would be defined under is not part of that tree.
-
-Not yet implemented from *Element Name Matching*: `#N` instance selection,
-`{e1}:{e2}` ranges, `,` unions, and `&` intersections.
-
-Results are de-duplicated and returned in document order. A malformed pattern
+Results are de-duplicated and returned in match order. A malformed pattern
 yields an empty vector.
 
 # Example
@@ -403,19 +411,20 @@ lat = parse_and_expand_pals("lattice.pals.yaml")
 match_names(lat.full_expanded, "B1.*>BendP.e1")       # e1 of every B1… bend
 match_names(lat.full_expanded, "Quadrupole::.*")      # every quadrupole element
 match_names(lat.full_expanded, "inj>>>arc>>Q.*>length")  # length of arc's Q… in lattice inj
+match_names(lat.full_expanded, "Q1:Q5 & Quadrupole::.*")  # the quadrupoles from Q1 to Q5
 match_names(lat.adjunct, "a_.*")                # constants/variables named a_…
 ```
 """
 function match_names(node::YAMLNode, match_string::AbstractString)
   tree = node.tree
-  m = @ccall (libparser()).match_names(
+  m = @ccall $(_csym(:match_names))(
     tree.handle::Ptr{Cvoid}, String(match_string)::Cstring)::NameMatchesC
 
   ids = try
     n = Int(m.count)
     n == 0 ? Csize_t[] : copy(unsafe_wrap(Array, m.nodes, n))
   finally
-    @ccall (libparser()).free_name_matches(m::NameMatchesC)::Cvoid
+    @ccall $(_csym(:free_name_matches))(m::NameMatchesC)::Cvoid
   end
 
   return YAMLNode[YAMLNode(tree, id) for id in ids]
@@ -469,7 +478,7 @@ parameter_value(lat, "quad1>nope.nope")               # missing
 ```
 """
 function parameter_value(lat::Lattices, match_string::AbstractString)
-  pv = @ccall (libparser()).get_lattice_parameter_value(
+  pv = @ccall $(_csym(:get_lattice_parameter_value))(
     lat.full_expanded.tree.handle::Ptr{Cvoid}, lat.adjunct.tree.handle::Ptr{Cvoid},
     String(match_string)::Cstring)::ParamValueC
   return _param_value_result(pv)
@@ -482,7 +491,7 @@ function _param_value_result(pv::ParamValueC)
   pv.kind == PARAM_VALUE_NUMBER && return pv.number
   pv.kind == PARAM_VALUE_STRING || return missing
   s = unsafe_string(pv.string)
-  @ccall (libparser()).yaml_free_string(pv.string::Cstring)::Cvoid
+  @ccall $(_csym(:yaml_free_string))(pv.string::Cstring)::Cvoid
   return s
 end
 
@@ -495,7 +504,7 @@ Parse a YAML file from disk. Returns a node pointing to the tree root.
 """
 function parse_file(filename::String)
   isfile(filename) || error("File not found: $filename")
-  handle = @ccall (libparser()).parse_file(filename::Cstring)::Ptr{Cvoid}
+  handle = @ccall $(_csym(:parse_file))(filename::Cstring)::Ptr{Cvoid}
   if handle == C_NULL
     msg = _last_parse_error()
     error("Failed to parse YAML file: $filename" * (isempty(msg) ? "" : "\n  $msg"))
@@ -511,7 +520,7 @@ end
 Parse a YAML string. Returns a node pointing to the tree root.
 """
 function parse_string(yaml_str::String)
-  handle = @ccall (libparser()).parse_string(yaml_str::Cstring)::Ptr{Cvoid}
+  handle = @ccall $(_csym(:parse_string))(yaml_str::Cstring)::Ptr{Cvoid}
   if handle == C_NULL
     msg = _last_parse_error()
     error("Failed to parse YAML string" * (isempty(msg) ? "" : "\n  $msg"))
@@ -527,7 +536,7 @@ end
 Create an empty MAP tree. Returns a node pointing to the root MAP.
 """
 function create_empty_tree()
-  handle = @ccall (libparser()).create_empty_tree()::Ptr{Cvoid}
+  handle = @ccall $(_csym(:create_empty_tree))()::Ptr{Cvoid}
   return _root_node(handle)
 end
 
@@ -541,7 +550,7 @@ otherwise.  A node is exactly one of MAP, sequence, or scalar; use this to
 decide before accessing children by key.
 """
 is_map(node::YAMLNode) =
-  @ccall (libparser()).is_map(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Bool
+  @ccall $(_csym(:is_map))(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Bool
 
 #---------------------------------------------------------------------------------------------------
 
@@ -553,7 +562,7 @@ otherwise.  A node is exactly one of MAP, sequence, or scalar; use this to
 decide before accessing children by index.
 """
 is_sequence(node::YAMLNode) =
-  @ccall (libparser()).is_sequence(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Bool
+  @ccall $(_csym(:is_sequence))(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Bool
 
 #---------------------------------------------------------------------------------------------------
 
@@ -566,7 +575,7 @@ scalar; scalar nodes have no children and their value is read with `String`,
 `Int`, `Float64`, or `Bool`.
 """
 is_scalar(node::YAMLNode) =
-  @ccall (libparser()).is_scalar(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Bool
+  @ccall $(_csym(:is_scalar))(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Bool
 
 # ─── traversal ───────────────────────────────────────────────────────────────
 
@@ -577,7 +586,7 @@ Return the parent of `node`, or error if `node` is the root (which has no
 parent).
 """
 function get_parent(node::YAMLNode)
-  id = @ccall (libparser()).get_parent(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Csize_t
+  id = @ccall $(_csym(:get_parent))(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Csize_t
   id == YAML_NULL_ID && error("Node has no parent (it is the root)")
   return YAMLNode(node.tree, id)
 end
@@ -593,7 +602,7 @@ Throws an error if no child has the given key; call `haskey(node, key)` first
 if the key may be absent.
 """
 function Base.getindex(node::YAMLNode, key::String)
-  id = @ccall (libparser()).get_child_by_key(
+  id = @ccall $(_csym(:get_child_by_key))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, key::Cstring)::Csize_t
   id == YAML_NULL_ID && error("Key not found: $key")
   return YAMLNode(node.tree, id)
@@ -609,7 +618,7 @@ Return the `index`-th direct child of a MAP or sequence `node`.  Indexing is
 an error if `index` is out of bounds.
 """
 function Base.getindex(node::YAMLNode, index::Int)
-  id = @ccall (libparser()).get_child_by_index(
+  id = @ccall $(_csym(:get_child_by_index))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, Csize_t(index - 1)::Csize_t)::Csize_t
   id == YAML_NULL_ID && error("Index out of bounds: $index")
   return YAMLNode(node.tree, id)
@@ -625,7 +634,7 @@ Return `true` if the MAP `node` has a direct child stored under the string
 recursive.  Useful as a guard before `node[key]`, which errors on a missing key.
 """
 function Base.haskey(node::YAMLNode, key::String)
-  id = @ccall (libparser()).get_child_by_key(
+  id = @ccall $(_csym(:get_child_by_key))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, key::Cstring)::Csize_t
   return id != YAML_NULL_ID
 end
@@ -640,7 +649,7 @@ in a MAP, or the number of elements in a sequence.  Scalar nodes report 0.
 Only direct children are counted (the count is not recursive).
 """
 function Base.length(node::YAMLNode)
-  Int(@ccall (libparser()).get_size(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Csize_t)
+  Int(@ccall $(_csym(:get_size))(node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Csize_t)
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -657,14 +666,14 @@ function Base.keys(node::YAMLNode)
   n = length(node)
   result = Vector{String}(undef, n)
   for i in 0:(n - 1)
-    child_id = @ccall (libparser()).get_child_by_index(
+    child_id = @ccall $(_csym(:get_child_by_index))(
       node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, Csize_t(i)::Csize_t)::Csize_t
     child_id == YAML_NULL_ID && continue
-    key_ptr = @ccall (libparser()).get_node_key(
+    key_ptr = @ccall $(_csym(:get_node_key))(
       node.tree.handle::Ptr{Cvoid}, child_id::Csize_t)::Cstring
     key_ptr == C_NULL && continue
     result[i + 1] = unsafe_string(key_ptr)
-    @ccall (libparser()).yaml_free_string(key_ptr::Cstring)::Cvoid
+    @ccall $(_csym(:yaml_free_string))(key_ptr::Cstring)::Cvoid
   end
   return result
 end
@@ -679,11 +688,11 @@ or `nothing` if `node` has no key.  Sequence elements and the tree root have no
 key and return `nothing`.
 """
 function node_key(node::YAMLNode)
-  ptr = @ccall (libparser()).get_node_key(
+  ptr = @ccall $(_csym(:get_node_key))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Cstring
   ptr == C_NULL && return nothing
   s = unsafe_string(ptr)
-  @ccall (libparser()).yaml_free_string(ptr::Cstring)::Cvoid
+  @ccall $(_csym(:yaml_free_string))(ptr::Cstring)::Cvoid
   return s
 end
 
@@ -724,11 +733,11 @@ not a scalar (i.e. it is a MAP or sequence); guard with `is_scalar(node)` if
 unsure.  This is the raw text; use `Int`, `Float64`, or `Bool` for typed values.
 """
 function Base.String(node::YAMLNode)
-  ptr = @ccall (libparser()).as_string(
+  ptr = @ccall $(_csym(:as_string))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Cstring
   ptr == C_NULL && error("Node has no scalar value")
   s = unsafe_string(ptr)
-  @ccall (libparser()).yaml_free_string(ptr::Cstring)::Cvoid
+  @ccall $(_csym(:yaml_free_string))(ptr::Cstring)::Cvoid
   return s
 end
 
@@ -772,12 +781,14 @@ end
 # Nullable key helper: branches on nothing to avoid passing a Julia String
 # through a Cstring slot when the C side expects NULL.
 macro _ccall_add(fn, tree, parent_id, key, rest...)
+  # `@ccall $(_csym(:fn))(...)`, with the `$` kept for @ccall rather than taken by this quote.
+  ptr = Expr(:$, :(_csym($(QuoteNode(fn)))))
   quote
     if $(esc(key)) === nothing
-      @ccall (libparser()).$(fn)($(esc(tree))::Ptr{Cvoid}, $(esc(parent_id))::Csize_t,
+      @ccall $(ptr)($(esc(tree))::Ptr{Cvoid}, $(esc(parent_id))::Csize_t,
         C_NULL::Ptr{Cchar}, $(map(esc, rest)...))::Csize_t
     else
-      @ccall (libparser()).$(fn)($(esc(tree))::Ptr{Cvoid}, $(esc(parent_id))::Csize_t,
+      @ccall $(ptr)($(esc(tree))::Ptr{Cvoid}, $(esc(parent_id))::Csize_t,
         $(esc(key))::Cstring, $(map(esc, rest)...))::Csize_t
     end
   end
@@ -797,11 +808,11 @@ function add_scalar!(parent::YAMLNode, value::String;
                      index::Union{Integer,Nothing}=nothing)
   c_index = index === nothing ? YAML_NULL_ID : Csize_t(index - 1)
   id = if key === nothing
-    @ccall (libparser()).add_scalar(
+    @ccall $(_csym(:add_scalar))(
       parent.tree.handle::Ptr{Cvoid}, parent.id::Csize_t,
       C_NULL::Ptr{Cchar}, value::Cstring, c_index::Csize_t)::Csize_t
   else
-    @ccall (libparser()).add_scalar(
+    @ccall $(_csym(:add_scalar))(
       parent.tree.handle::Ptr{Cvoid}, parent.id::Csize_t,
       key::Cstring, value::Cstring, c_index::Csize_t)::Csize_t
   end
@@ -824,11 +835,11 @@ function add_map!(parent::YAMLNode;
                   index::Union{Integer,Nothing}=nothing)
   c_index = index === nothing ? YAML_NULL_ID : Csize_t(index - 1)
   id = if key === nothing
-    @ccall (libparser()).add_map(
+    @ccall $(_csym(:add_map))(
       parent.tree.handle::Ptr{Cvoid}, parent.id::Csize_t,
       C_NULL::Ptr{Cchar}, c_index::Csize_t)::Csize_t
   else
-    @ccall (libparser()).add_map(
+    @ccall $(_csym(:add_map))(
       parent.tree.handle::Ptr{Cvoid}, parent.id::Csize_t,
       key::Cstring, c_index::Csize_t)::Csize_t
   end
@@ -851,11 +862,11 @@ function add_sequence!(parent::YAMLNode;
                        index::Union{Integer,Nothing}=nothing)
   c_index = index === nothing ? YAML_NULL_ID : Csize_t(index - 1)
   id = if key === nothing
-    @ccall (libparser()).add_sequence(
+    @ccall $(_csym(:add_sequence))(
       parent.tree.handle::Ptr{Cvoid}, parent.id::Csize_t,
       C_NULL::Ptr{Cchar}, c_index::Csize_t)::Csize_t
   else
-    @ccall (libparser()).add_sequence(
+    @ccall $(_csym(:add_sequence))(
       parent.tree.handle::Ptr{Cvoid}, parent.id::Csize_t,
       key::Cstring, c_index::Csize_t)::Csize_t
   end
@@ -872,13 +883,13 @@ Set or update a scalar value in a MAP node.  If `key` already exists its
 value is updated with `set_scalar`; otherwise a new scalar child is appended.
 """
 function Base.setindex!(node::YAMLNode, value::String, key::String)
-  child_id = @ccall (libparser()).get_child_by_key(
+  child_id = @ccall $(_csym(:get_child_by_key))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, key::Cstring)::Csize_t
   if child_id != YAML_NULL_ID
-    @ccall (libparser()).set_scalar(
+    @ccall $(_csym(:set_scalar))(
       node.tree.handle::Ptr{Cvoid}, child_id::Csize_t, value::Cstring)::Cvoid
   else
-    @ccall (libparser()).add_scalar(
+    @ccall $(_csym(:add_scalar))(
       node.tree.handle::Ptr{Cvoid}, node.id::Csize_t,
       key::Cstring, value::Cstring, YAML_NULL_ID::Csize_t)::Csize_t
   end
@@ -894,7 +905,7 @@ an existing node in place; to set a value by key within a MAP (adding the key if
 absent), use `node[key] = value` instead.
 """
 function set_scalar!(node::YAMLNode, value::String)
-  @ccall (libparser()).set_scalar(
+  @ccall $(_csym(:set_scalar))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, value::Cstring)::Cvoid
 end
 
@@ -908,7 +919,7 @@ string `key`.  Only meaningful for nodes that live inside a MAP; sequence
 elements are keyless.
 """
 function set_key!(node::YAMLNode, key::String)
-  @ccall (libparser()).set_node_key(
+  @ccall $(_csym(:set_node_key))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t, key::Cstring)::Cvoid
 end
 
@@ -922,9 +933,9 @@ removal the `YAMLNode` handle is stale and must not be used again.  Intended for
 non-root nodes; the root has no parent to be removed from.
 """
 function remove!(node::YAMLNode)
-  parent_id = @ccall (libparser()).get_parent(
+  parent_id = @ccall $(_csym(:get_parent))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Csize_t
-  @ccall (libparser()).remove_node(
+  @ccall $(_csym(:remove_node))(
     node.tree.handle::Ptr{Cvoid}, parent_id::Csize_t, node.id::Csize_t)::Cvoid
 end
 
@@ -937,7 +948,7 @@ Copy the type, key, value, and all descendants of `src` into `dst`,
 overwriting whatever `dst` previously held.  Works across different trees.
 """
 function deep_copy_node!(dst::YAMLNode, src::YAMLNode)
-  @ccall (libparser()).deep_copy_node(
+  @ccall $(_csym(:deep_copy_node))(
     dst.tree.handle::Ptr{Cvoid}, dst.id::Csize_t,
     src.tree.handle::Ptr{Cvoid}, src.id::Csize_t)::Cvoid
 end
@@ -953,7 +964,7 @@ Works across different trees.
 """
 function deep_copy_children!(dst::YAMLNode, src::YAMLNode; index::Union{Integer,Nothing}=nothing)
   c_index = index === nothing ? YAML_NULL_ID : Csize_t(index - 1)
-  @ccall (libparser()).deep_copy_children(
+  @ccall $(_csym(:deep_copy_children))(
     dst.tree.handle::Ptr{Cvoid}, dst.id::Csize_t,
     src.tree.handle::Ptr{Cvoid}, src.id::Csize_t,
     c_index::Csize_t)::Cvoid
@@ -1012,11 +1023,11 @@ end
 # Emit `node` and its descendants as YAML, without any filtering.
 
 function _emit_yaml(node::YAMLNode)
-  ptr = @ccall (libparser()).node_to_string(
+  ptr = @ccall $(_csym(:node_to_string))(
     node.tree.handle::Ptr{Cvoid}, node.id::Csize_t)::Cstring
   ptr == C_NULL && error("Cannot convert node to YAML string")
   s = unsafe_string(ptr)
-  @ccall (libparser()).yaml_free_string(ptr::Cstring)::Cvoid
+  @ccall $(_csym(:yaml_free_string))(ptr::Cstring)::Cvoid
   return s
 end
 
@@ -1071,7 +1082,7 @@ function write_yaml(node::YAMLNode, filename::String; exclude::ExcludeKeys=Strin
   # else holds a reference to it.
   target = isempty(drop) ? node : _pruned_copy(_tree_root(node), drop)
   GC.@preserve target begin
-    return Bool(@ccall (libparser()).write_file(
+    return Bool(@ccall $(_csym(:write_file))(
       target.tree.handle::Ptr{Cvoid}, filename::Cstring)::Bool)
   end
 end

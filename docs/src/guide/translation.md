@@ -73,7 +73,7 @@ almost every element. The ones that shape the whole translation:
 
 - **Every MAD-X strength is normalized.** MAD-X has no field-valued attribute at
   all, where Bmad has `field_master` and `B1_GRADIENT`. A PALS component stated as
-  a field (`Bn1`, `Bsol`, `bend_field_ref`) is therefore divided by the signed
+  a field (`Bn1`, `Bsol`, `Bn0_ref`) is therefore divided by the signed
   rigidity `P0/q`, which the file defines once as
   `pals_brho := beam->brho * beam->charge / abs(beam->charge);` and leaves MAD-X to
   evaluate from its own `BEAM` command.
@@ -107,7 +107,7 @@ almost every element. The ones that shape the whole translation:
   two controllers both claim is prefixed with the controller that owns it.
 - **MAD-X units are not PALS units.** Energies are GeV against eV, voltages MV
   against V, frequencies MHz against Hz, and phases are counted in turns where PALS
-  counts Twiss phases in radians. A value written as a number is converted during
+  counts them in radians. A value written as a number is converted during
   translation; one written as an expression is left for MAD-X to evaluate.
 - **The longitudinal coordinate is measured against the energy.** MAD-X's `T`, `PT`
   and its dispersion are derivatives with respect to `pt = dE/(p0 c)` where PALS
@@ -139,11 +139,12 @@ and their SciBmad/Bmad/MAD-X equivalents.
 - Mask --> collimator
 - Instrument --> instrument
 - Marker, BeginningEle --> marker
-- Placeholder --> placeholder
 - Patch --> changeref
 - Taylor --> matrix (the map itself is not yet translated)
 - ACKicker, Wiggler, Converter, EGun, Foil, Match, Fiducial, FloorShift, Fork,
-  ReferenceChange, Girder, UnionEle, Feedback --> no MAD-X equivalent (an error)
+  ReferenceChange, UnionEle, Feedback --> no MAD-X equivalent (an error)
+- Placeholder --> dropped from every line, as lattice expansion drops it, in all
+  three formats
 
 ### ACKickerP --> None
 
@@ -258,13 +259,33 @@ and their SciBmad/Bmad/MAD-X equivalents.
 ### FloorP --> Calculated
 
 ### CoordinateSetP --> Set in floor shift element (to be added to scibmad)
+- Note (Bmad): a `FloorShift` becomes a `floor_shift` and a `Fiducial` a `fiducial`.
+  `origin_ele` and `origin_ele_ref_pt` carry over (PALS defaults to `EXIT_END`, Bmad to
+  `center`, so the reference point is always written). The CoordinateSetP shift and the
+  element's BodyShiftP together place the element, and become one Bmad shift: the patch
+  attributes `x_offset`, ..., `x_pitch = y_rot`, `y_pitch = -x_rot`, `tilt = z_rot` for a
+  `floor_shift`, and `dx_origin`, ..., `dtheta_origin = y_rot`, `dphi_origin = -x_rot`,
+  `dpsi_origin = z_rot` for a `fiducial`. When the CoordinateSetP shift rotates as well as
+  the BodyShiftP shifts, the two are composed numerically, which needs numbers.
+- Note (Bmad): origin `PREVIOUS_ELEMENT` is Bmad's own default for a `floor_shift` and has
+  no meaning for a `fiducial` (an error). `GLOBAL_ORIGIN` is Bmad's default for a `fiducial`;
+  a `floor_shift` has no such setting and is placed from Bmad's `beginning` element, which
+  is an error when the lattice moves the beginning element off the origin.
 - Note (MAD-X): MAD-X has no element that sets the global coordinates of the reference
   curve, so the group is an error. `FloorShift` and `Fiducial`, the two kinds that
   carry it, have no MAD-X equivalent either.
 
 ### ForkP --> Needs to be Implemented in scibmad
 
-### GirderP In Contruction
+### Girders (`PALS: girders`, GirderP)
+- Note (Bmad): each girder becomes a Bmad `girder`, written after any girder it supports as
+  Bmad requires. `GirderP.elements` becomes the slave list, which Bmad takes either as
+  element names or as one `start:end` range; any other element set is an error. The
+  CoordinateSetP origin becomes `origin_ele` (`GLOBAL_ORIGIN` --> `global_coordinates`) and
+  its shift the `d*_origin` attributes; the BodyShiftP becomes the girder's offsets, pitches
+  and tilt.
+- Note (MAD-X): MAD-X has no girders, so `PALS: girders` is an error.
+- Note (SciBmad): SciBmad has no girders; they are not translated.
 
 ### MagneticMultipoleP --> BMultipoleParams
 - tiltN --> tiltN
@@ -363,7 +384,7 @@ and their SciBmad/Bmad/MAD-X equivalents.
 - if neither frequency or harmon exist, set rate_meaning = -1
 - voltage --> voltage
 - gradient --> none
-- phase --> phi0
+- phase --> phi0 (both in radians)
 - multipass_phase --> none
 - cavity_type --> traveling_wave
     - STANDING_WAVE --> false
@@ -376,11 +397,13 @@ and their SciBmad/Bmad/MAD-X equivalents.
 
 - Note (MAD-X): frequency --> `freq` in MHz, harmon --> `harmon`,
   voltage --> `volt` in MV, gradient --> `volt = gradient * L_active`.
-- Note (MAD-X): phase --> `lag`, offset by what `zero_phase` measures from. MAD-X's
-  zero lag is the zero crossing half a period from the one Bmad and PALS call the
-  stable point above transition (`phi0 = lag + 0.5`), so
-  ABOVE_TRANSITION --> `lag = phase - 0.5`, BELOW_TRANSITION --> `lag = phase`, and
-  ACCELERATING --> `lag = phase - 0.25`.
+- Note (Bmad): phase --> `phi0 = phase / twopi` and multipass_phase -->
+  `phi0_multipass = multipass_phase / twopi`, Bmad counting RF phases in turns.
+- Note (MAD-X): phase --> `lag` in turns, offset by what `zero_phase` measures from.
+  MAD-X's zero lag is the zero crossing half a period from the one Bmad and PALS call
+  the stable point above transition (`phi0 = lag + 0.5`), so
+  ABOVE_TRANSITION --> `lag = phase/2pi - 0.5`, BELOW_TRANSITION --> `lag = phase/2pi`,
+  and ACCELERATING --> `lag = phase/2pi - 0.25`.
 - Note (MAD-X): a TRAVELING_WAVE cavity is MAD-X's `twcavity`, which only PTC
   tracks, so it is translated as an `rfcavity` with a warning; `multipass_phase`,
   `num_cells`, `L_active` and `dE_ref` have no equivalent.
@@ -471,4 +494,4 @@ and their SciBmad/Bmad/MAD-X equivalents.
 - names of fundamental constants
 - names of functions (tan)
 - sinc --> sincu
-- MAD-X: `ElectricMultipoleP`, `FloorP`, `ForkP`, `GirderP` and `TaylorP`
+- MAD-X: `ElectricMultipoleP`, `FloorP`, `ForkP` and `TaylorP`
