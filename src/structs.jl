@@ -59,8 +59,8 @@ end
 """
     PALSParserJ.libparser() -> String
 
-Absolute path to the PALSParserCpp shared library every `@ccall` here targets,
-resolved on first use and cached thereafter. Throws a descriptive error listing
+Absolute path to the PALSParserCpp shared library every `@ccall` here targets
+(through [`_csym`](@ref)), resolved on first use and cached thereafter. Throws a descriptive error listing
 every path tried if the library cannot be found.
 
 Resolution is deliberately lazy rather than done in `__init__`: `using
@@ -71,6 +71,25 @@ a missing library is reported at the first call rather than at load.
 function libparser()
   isempty(LIBPARSER[]) && (LIBPARSER[] = _find_libparser())
   return LIBPARSER[]
+end
+
+# Function pointers into the library, looked up on first use.
+const _CSYMS = Dict{Symbol,Ptr{Cvoid}}()
+
+"""
+    PALSParserJ._csym(name::Symbol) -> Ptr{Cvoid}
+
+The address of the C function `name` in the PALSParserCpp library (see
+[`libparser`](@ref)), looked up on first use and cached thereafter.
+
+Every call into the library goes through this pointer, `@ccall \$(_csym(:f))(...)`,
+rather than naming the library: Julia 1.13 requires the library in a `ccall` to
+be a constant name, and the path here is only known at run time.
+"""
+function _csym(name::Symbol)
+  get!(_CSYMS, name) do
+    Libdl.dlsym(Libdl.dlopen(libparser()), name)
+  end
 end
 
 # ─── constants matching the C header ────────────────────────────────────────
@@ -93,7 +112,7 @@ mutable struct YAMLTree
     t = new(handle)
     finalizer(t) do tree
       if tree.handle != C_NULL
-        @ccall (libparser()).delete_tree(tree.handle::Ptr{Cvoid})::Cvoid
+        @ccall $(_csym(:delete_tree))(tree.handle::Ptr{Cvoid})::Cvoid
         tree.handle = C_NULL
       end
     end
