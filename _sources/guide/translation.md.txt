@@ -231,6 +231,10 @@ and their SciBmad/Bmad/MAD-X equivalents.
   `ref_geometry`: `ARC`/`CHORD` --> `e = e_rect + angle/2`; `ENTRANCE_COORDS` -->
   `e1 = e1_rect`, `e2 = e2_rect + angle`; `EXIT_COORDS` --> `e1 = e1_rect + angle`,
   `e2 = e2_rect`.
+- Note (Bmad): angle_ref --> angle. e1 --> e1 and e2 --> e2, a Bmad sbend measuring its
+  faces against the sector geometry too; `e1_rect`/`e2_rect` are converted the same way as
+  for MAD-X, with the angle worked out from `angle_ref`, or from `g_ref`/`radius_ref` with
+  `length`, `L_chord` or `L_rectangle`.
 - Note (MAD-X): edge1_int --> `fint = 0.5, hgap = 2*edge1_int`, edge2_int -->
   `fintx`/`hgapx`; h1 --> h1, h2 --> h2; tilt_ref --> tilt.
 - Note (MAD-X): a MAD-X sbend is always an arc with vertically pure multipoles, so a
@@ -397,6 +401,8 @@ and their SciBmad/Bmad/MAD-X equivalents.
 
 - Note (MAD-X): frequency --> `freq` in MHz, harmon --> `harmon`,
   voltage --> `volt` in MV, gradient --> `volt = gradient * L_active`.
+- Note (Bmad): gradient --> `voltage = gradient * L_active` (`L_active` defaulting to the
+  element length), Bmad's `gradient` being a dependent attribute.
 - Note (Bmad): phase --> `phi0 = phase / twopi` and multipass_phase -->
   `phi0_multipass = multipass_phase / twopi`, Bmad counting RF phases in turns.
 - Note (MAD-X): phase --> `lag` in turns, offset by what `zero_phase` measures from.
