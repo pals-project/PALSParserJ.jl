@@ -3,6 +3,7 @@ using Test
 # pals_to_scibmad / write_scibmad_file are exported.
 using PALSParserJ
 using PALSParserJ: parse_file   # not exported by default; the translators now take a parsed tree
+import Beamlines                # to run the SciBmad lattice files written by the translator
 
 # A small but structurally complete PALS lattice.  It exercises every branch of
 # the translator dispatch: a BeginningEle (reference / particle-start settings),
@@ -623,6 +624,45 @@ const _PLACEMENT_FIXTURE = """
           x_rot: 0.003
   """
 
+# A FODO lattice as written by the SciBmad-to-PALS translator in SciBmadUtils.jl. The SciBmad
+# file translated from it is run to check that it builds the lattice.
+const _SCIBMAD_RUN_FIXTURE = """
+  PALS:
+    version: null
+    facility:
+      - b1_begin:
+          kind: BeginningEle
+          ReferenceP:
+            species_ref: electron
+            E_tot_ref: 1.8e10
+      - qf:
+          kind: Quadrupole
+          length: 0.5
+          MagneticMultipoleP:
+            Kn1: 0.36
+      - d:
+          kind: Drift
+          length: 1.0
+      - b:
+          kind: Bend
+          length: 2.0
+          BendP:
+            g_ref: 0.01
+          MagneticMultipoleP:
+            Kn0: 0.01
+      - qd:
+          kind: Quadrupole
+          length: 0.5
+          MagneticMultipoleP:
+            Kn1: -0.36
+      - b1:
+          kind: BeamLine
+          line: [b1_begin, qf, d, b, d, qd, d, b, d]
+      - fodo_lattice:
+          kind: Lattice
+          branches: [b1]
+  """
+
 # Writes `text` to a file in `dir` and returns the parsed tree.
 _parsed(dir, text) = (path = joinpath(dir, "fixture.pals.yaml");
                       write(path, text); parse_file(path))
@@ -741,7 +781,7 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
       # @elements block with the ordinary elements.
       @test occursin("@elements begin", out)
       @test occursin("d1 = LineElement(", out)
-      @test occursin("kind = Drift", out)
+      @test occursin("kind = \"Drift\"", out)
 
       # Beamlines states a limit as an edge position, so the low-side ones stay as PALS
       # wrote them -- where Bmad wants the distance from the axis.
@@ -756,7 +796,7 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
 
       # Beamline and lattice list.
       @test occursin("ring = Beamline([", out)
-      @test occursin("lat = [ring,]", out)
+      @test occursin("lat = Lattice([Branch([ring], name = \"ring\")], name = \"lat\")", out)
     end
   end
 
@@ -858,7 +898,7 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
       @test occursin("(s1, :Ks2L) => (ele; dk) -> ele.Ks2L + (dk)", out)
 
       # An aperture group that sets no limit bounds nothing, so q1 gets no aperture at all.
-      @test occursin("q1 = LineElement(kind = Quadrupole, L = 0.5, Kn1 = 0.25)", out)
+      @test occursin("q1 = LineElement(kind = \"Quadrupole\", L = 0.5, Kn1 = 0.25)", out)
 
       # s1's does bound something.  Beamlines states each limit as an edge position, so the
       # low-side ones are negative -- where Bmad wants a distance from the axis.
@@ -868,8 +908,41 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
 
       # The line names its beginning element; its reference parameters still reach the
       # beamline, and the branch given as a map still reaches the lattice list.
-      @test occursin("species_ref = electron", out)
-      @test occursin("lat = [ring,]", out)
+      @test occursin("species_ref = Species(\"electron\")", out)
+      @test occursin("lat = Lattice([Branch([ring], name = \"ring\")], name = \"lat\")", out)
+    end
+  end
+
+  @testset "the SciBmad lattice file runs and builds the lattice" begin
+    mktempdir() do dir
+      scibmad = pals_to_scibmad(_parsed(dir, _SCIBMAD_RUN_FIXTURE))
+      out_path = joinpath(dir, "fixture.pals_out.jl")
+      write_scibmad_file(scibmad, out_path)
+
+      # Run the file as SciBmad would, in a module of its own that uses Beamlines.
+      m = Module(:SciBmadLatticeFile)
+      Core.eval(m, :(using Beamlines))
+      Base.include(m, out_path)
+      # The binding is newer than this running code, so it must be read with invokelatest.
+      lat = Base.invokelatest(getfield, m, :fodo_lattice)
+
+      @test lat isa Beamlines.Lattice
+      @test lat.name == "fodo_lattice"
+      @test length(lat.branches) == 1
+      branch = lat.branches[1]
+      @test branch.name == "b1"
+      bl = only(branch.beamlines)
+
+      # The BeginningEle gives the reference and is not itself an element of the line.
+      @test bl.species_ref == Beamlines.Species("electron")
+      @test bl.E_ref == 1.8e10
+      @test [e.name for e in bl.line] == ["qf", "d", "b", "d", "qd", "d", "b", "d"]
+
+      # Kinds are strings, with a PALS Bend becoming a SciBmad SBend.
+      @test [e.kind for e in bl.line[1:5]] == ["Quadrupole", "Drift", "SBend", "Drift", "Quadrupole"]
+      @test bl.line[1].L == 0.5 && bl.line[1].Kn1 == 0.36
+      @test bl.line[3].L == 2.0 && bl.line[3].g_ref == 0.01 && bl.line[3].Kn0 == 0.01
+      @test bl.line[5].Kn1 == -0.36
     end
   end
 
