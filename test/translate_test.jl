@@ -1319,4 +1319,31 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
     end
   end
 
+
+  @testset "a rectangular face angle becomes Bmad's sector one" begin
+    mktempdir() do dir
+      # Bmad holds a chord length only as a dependent attribute, so b3 states its arc length.
+      fixture = replace(_MADX_GEOMETRY_FIXTURE, r"\n *L_chord: 1.5" => "",
+                        r"(- b3:\n( *)kind: Bend\n)" => s"\1\2length: 1.5\n")
+      out = _bmad_text(dir, pals_to_bmad(_parsed(dir, fixture)))
+      # Curvature and arc length give the angle 0.5; e1_rect picks up half of it, and the exit
+      # face, given the sector way, comes straight across.
+      @test occursin("b2: SBend,\n\tL = 2,\n\tg = 0.25,\n\te1 = 0.26,\n\te2 = 0.3", out)
+      # With ref_geometry EXIT_COORDS the whole angle lands on the entrance face.
+      @test occursin("b3: SBend,\n\tL = 1.5,\n\tangle = 0.4,\n\te1 = 0.42000000000000004," *
+                     "\n\te2 = 0.03", out)
+      # The angle is stated as well as the curvature it came with.
+      @test occursin("b1: SBend,\n\tangle = 0.25,\n\tg = 0.5\n", out)
+    end
+  end
+
+  @testset "an RF gradient becomes Bmad's voltage" begin
+    mktempdir() do dir
+      fixture = replace(_PLACEMENT_FIXTURE, r"girders:\n(.|\n)*" => "",
+                        "voltage: 1E6" => "gradient: 2E6")
+      @test occursin("rf1: RFCavity,\n\tL = 1.3,\n\tvoltage = 2.6e6",
+                     _bmad_text(dir, pals_to_bmad(_parsed(dir, fixture))))
+    end
+  end
+
 end
