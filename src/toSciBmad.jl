@@ -130,6 +130,7 @@ function pals_to_scibmad(yaml::YAMLNode)
       push!(lat.elements, _make_scibmad_ele(ele))
     end
   end
+  _splice_scibmad_sublines!(lat.beamlines)
   for bl in lat.beamlines
     filter!(m -> m ∉ placeholders, bl.members)
   end
@@ -282,24 +283,28 @@ end
 
 Translate a `BeamLine` element into a [`SciBmadBeamline`](@ref).
 
-Collect the member element names (dropping the leading reference entry, `line[1]`) and the
-reference parameters read from that first entry. A line may also name its beginning element
-instead of spelling it out, in which case the reference parameters are on that element's
-`facility` definition.
+Collect the member element names and, when the line starts with a `BeginningEle`, the
+reference parameters read from it. The `BeginningEle` gives the reference and is not itself a
+member. A line may spell it out or name it, in which case the reference parameters are on that
+element's `facility` definition. A line that does not start with one, as a line used inside
+another usually does not, keeps all its entries as members and has no reference parameters.
 """
 function _make_scibmad_beamline(ele::YAMLNode, facility::YAMLNode)
   name = String(keys(ele)[1])
   props = ele[keys(ele)[1]]
   line = props["line"]
-  beginning = line[1]
-  if !is_map(beginning)
-    beginning = _facility_entry(facility, String(beginning))
-    beginning === nothing &&
-        error("BeamLine $name: its first element is not defined in the facility")
+  ref = String[]
+  first_member = 1
+  if !isempty(line)
+    beginning = line[1]
+    is_map(beginning) || (beginning = _facility_entry(facility, String(beginning)))
+    if beginning !== nothing && _ele_kind(beginning, facility) == "BeginningEle"
+      ref, _ = _ele_to_scibmad_str(beginning)
+      first_member = 2
+    end
   end
-  ref, _ = _ele_to_scibmad_str(beginning)
   members = String[]
-  for i in 2:length(line)
+  for i in first_member:length(line)
     line_ele = line[i]
     if is_scalar(line_ele)
       push!(members, String(line_ele))
@@ -308,6 +313,50 @@ function _make_scibmad_beamline(ele::YAMLNode, facility::YAMLNode)
     end
   end
   return SciBmadBeamline(name, members, ref)
+end
+
+#---------------------------------------------------------------------------------------------------
+"""
+    _ele_kind(ele::YAMLNode, facility::YAMLNode)
+
+Return the `kind` of the one-entry map `ele`, a facility definition or a `line` entry. A `line`
+entry that gives no `kind` takes the kind of the `facility` element of the same name. Return
+`""` when no kind is found.
+"""
+function _ele_kind(ele::YAMLNode, facility::YAMLNode)
+  name = String(keys(ele)[1])
+  props = ele[keys(ele)[1]]
+  is_map(props) && haskey(props, "kind") && return String(props["kind"])
+  def = _facility_props(facility, name)
+  return def !== nothing && haskey(def, "kind") ? String(def["kind"]) : ""
+end
+
+#---------------------------------------------------------------------------------------------------
+"""
+    _splice_scibmad_sublines!(beamlines::Vector{SciBmadBeamline})
+
+Replace each member of `beamlines` that names another of the `beamlines` by that line's members.
+
+A PALS `line` may hold another `BeamLine`, but a SciBmad `Beamline` holds only elements, so the
+sub-line's elements are spliced in its place. Sub-lines may themselves hold sub-lines. A line
+that holds itself, directly or not, raises an error.
+"""
+function _splice_scibmad_sublines!(beamlines::Vector{SciBmadBeamline})
+  by_name = Dict(bl.name => bl for bl in beamlines)
+  spliced = Dict{String,Vector{String}}()
+  function members(name, path)
+    haskey(spliced, name) && return spliced[name]
+    name in path && error("BeamLine $name holds itself: $(join([path; name], " -> "))")
+    out = String[]
+    for m in by_name[name].members
+      haskey(by_name, m) ? append!(out, members(m, [path; name])) : push!(out, m)
+    end
+    return spliced[name] = out
+  end
+  for bl in beamlines
+    copy!(bl.members, members(bl.name, String[]))
+  end
+  return beamlines
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -416,6 +465,7 @@ RF, solenoid, tracking, reference change, ...) to build the keyword-argument fra
 function _make_scibmad_ele(ele::YAMLNode)
   props = ele[keys(ele)[1]]
   attrs = String[]
+  ignored = String[]   # The SciBmad parameter groups the element ignores
 
   for key in keys(props)
     if key == "kind"
@@ -497,8 +547,9 @@ function _make_scibmad_ele(ele::YAMLNode)
           shifts = lowercase(String(apertureP["aperture_shifts_with_body"]))
           push!(attrs, "aperture_shifts_with_body = $(shifts == "true")")
         elseif akey == "aperture_active"
-          active = lowercase(String(apertureP["aperture_active"]))
-          push!(attrs, "aperture_active = $(active == "true")")
+          # SciBmad has no switch for an aperture: an inactive one is an ignored group.
+          lowercase(String(apertureP["aperture_active"])) == "false" &&
+              push!(ignored, "ApertureParams")
         elseif akey == "vertices"
           println("vertices not yet supported")
         elseif akey == "material"
@@ -582,14 +633,13 @@ function _make_scibmad_ele(ele::YAMLNode)
       metaP = props["MetaP"]
       for mkey in keys(metaP)
         if mkey == "alias"
-          push!(attrs, "alias = $(String(metaP["alias"]))")
+          push!(attrs, "alias = $(repr(String(metaP["alias"])))")
         elseif mkey == "label"
-          push!(attrs, "label = $(String(metaP["label"]))")
+          push!(attrs, "label = $(repr(String(metaP["label"])))")
         elseif mkey == "description"
-          push!(attrs, "description = $(String(metaP["description"]))")
+          push!(attrs, "description = $(repr(String(metaP["description"])))")
         end
       end
-      println("MetaP not yet supported")
     elseif key == "PatchP"
       patchP = props["PatchP"]
       for pkey in keys(patchP)
@@ -624,11 +674,9 @@ function _make_scibmad_ele(ele::YAMLNode)
       L_active  = 0.0
       for rfkey in keys(rfP)
         if rfkey == "frequency"
-          push!(attrs, "rate = $(String(rfP["frequency"]))")
-          push!(attrs, "rate_meaning = false")
+          push!(attrs, "rf_frequency = $(String(rfP["frequency"]))")
         elseif rfkey == "harmon"
-          push!(attrs, "rate = $(String(rfP["harmon"]))")
-          push!(attrs, "rate_meaning = true")
+          push!(attrs, "harmon = $(String(rfP["harmon"]))")
         elseif rfkey == "voltage"
           push!(attrs, "voltage = $(String(rfP["voltage"]))")
         elseif rfkey == "gradient"
@@ -646,16 +694,13 @@ function _make_scibmad_ele(ele::YAMLNode)
         elseif rfkey == "zero_phase"
           zp = String(rfP["zero_phase"])
           if zp == "ACCELERATING"
-            push!(attrs, "zero_phase = Accelerating")
+            push!(attrs, "zero_phase = PhaseRef.Accelerating")
           elseif zp == "BELOW_TRANSITION"
-            push!(attrs, "zero_phase = BelowTransition")
+            push!(attrs, "zero_phase = PhaseRef.BelowTransition")
           elseif zp == "ABOVE_TRANSITION"
-            push!(attrs, "zero_phase = AboveTransition")
+            push!(attrs, "zero_phase = PhaseRef.AboveTransition")
           end
         end
-      end
-      if !haskey(rfP, "frequency") && !haskey(rfP, "harmon")
-        push!(attrs, "rate_meaning = -1")
       end
       push!(attrs, "tracking_method = SaganCavity(num_cells = $num_cells, L_active = $L_active)")
     elseif key == "SolenoidP"
@@ -693,5 +738,6 @@ function _make_scibmad_ele(ele::YAMLNode)
     end
   end
 
+  isempty(ignored) || push!(attrs, "ignore_params = [$(join(ignored, ", "))]")
   return SciBmadEle(String(keys(ele)[1]), attrs)
 end

@@ -663,6 +663,54 @@ const _SCIBMAD_RUN_FIXTURE = """
           branches: [b1]
   """
 
+# A ring with the PALS forms whose SciBmad form differs most: MetaP strings, an inactive
+# aperture, RF cavities with a frequency, a harmonic number and a zero phase, and a sub-line
+# `cell` that has no BeginningEle and is used twice.
+const _SCIBMAD_FORMS_FIXTURE = """
+  PALS:
+    facility:
+      - ring_begin:
+          kind: BeginningEle
+          ReferenceP:
+            species_ref: proton
+            pc_ref: 1.0e9
+      - m1:
+          kind: Marker
+          MetaP:
+            alias: start marker
+            label: "true"
+            description: "a: quoted \\"string\\""
+      - d:
+          kind: Drift
+          length: 1.0
+          ApertureP:
+            x_min: -0.02
+            x_max: 0.02
+            aperture_active: false
+      - rf1:
+          kind: RFCavity
+          length: 0.5
+          RFP:
+            frequency: 5.0e8
+            voltage: 1.0e6
+            zero_phase: BELOW_TRANSITION
+      - rf2:
+          kind: RFCavity
+          length: 0.5
+          RFP:
+            harmon: 10
+            voltage: 2.0e6
+      - cell:
+          kind: BeamLine
+          line: [d, rf1]
+      - ring:
+          kind: BeamLine
+          line: [ring_begin, m1, cell, rf2, cell]
+      - lat:
+          kind: Lattice
+          branches: [ring]
+  """
+
 # Writes `text` to a file in `dir` and returns the parsed tree.
 _parsed(dir, text) = (path = joinpath(dir, "fixture.pals.yaml");
                       write(path, text); parse_file(path))
@@ -943,6 +991,43 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
       @test bl.line[1].L == 0.5 && bl.line[1].Kn1 == 0.36
       @test bl.line[3].L == 2.0 && bl.line[3].g_ref == 0.01 && bl.line[3].Kn0 == 0.01
       @test bl.line[5].Kn1 == -0.36
+    end
+  end
+
+  @testset "SciBmad forms of MetaP, inactive apertures, RF and sub-lines" begin
+    mktempdir() do dir
+      scibmad = pals_to_scibmad(_parsed(dir, _SCIBMAD_FORMS_FIXTURE))
+      out_path = joinpath(dir, "fixture.pals_out.jl")
+      write_scibmad_file(scibmad, out_path)
+
+      m = Module(:SciBmadLatticeFile)
+      Core.eval(m, :(using Beamlines))
+      # The translator gives RF cavities BeamTracking's SaganCavity tracking method, which
+      # Beamlines alone does not define.
+      Core.eval(m, :(SaganCavity(; num_cells, L_active) = (; num_cells, L_active)))
+      Base.include(m, out_path)
+      lat = Base.invokelatest(getfield, m, :lat)
+      bl = only(only(lat.branches).beamlines)
+
+      @test bl.species_ref == Beamlines.Species("proton")
+      @test bl.pc_ref == 1.0e9
+      # The sub-line's elements are spliced in where it is used.
+      @test [e.name for e in bl.line] == ["m1", "d", "rf1", "rf2", "d", "rf1"]
+      m1, d, rf1, rf2 = bl.line[1:4]
+
+      @test m1.alias == "start marker"
+      @test m1.label == "true"
+      @test m1.description == "a: quoted \"string\""
+
+      # An inactive aperture is an ignored parameter group.
+      @test d.x1_limit == -0.02 && d.x2_limit == 0.02
+      @test d.ignore_params == [Beamlines.ApertureParams]
+
+      @test rf1.rf_frequency == 5.0e8
+      @test rf1.voltage == 1.0e6
+      @test rf1.zero_phase == Beamlines.PhaseRef.BelowTransition
+      @test rf2.harmon == 10
+      @test rf2.zero_phase == Beamlines.PhaseRef.Accelerating
     end
   end
 
