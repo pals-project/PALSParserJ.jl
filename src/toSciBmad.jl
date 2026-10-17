@@ -1,4 +1,10 @@
 """
+PALS element kinds whose SciBmad kind has a different name. Other kinds are the same in both.
+"""
+const _PALS_KIND_TO_SCIBMAD = Dict("Bend" => "SBend")
+
+#---------------------------------------------------------------------------------------------------
+"""
     SciBmadEle
 
 A single SciBmad `LineElement`: its `name` and the already-translated keyword-argument
@@ -204,11 +210,13 @@ end
 """
     _format_scibmad_lattice(latt::SciBmadLatticeList)
 
-Render a [`SciBmadLatticeList`](@ref) as a `name = [branches]` list.
+Render a [`SciBmadLatticeList`](@ref) as a `name = Lattice([branches...], name = "name")`
+definition. Each PALS branch is a `BeamLine`, which becomes a SciBmad `Branch` holding that
+one `Beamline` and carrying the branch name.
 """
 function _format_scibmad_lattice(latt::SciBmadLatticeList)
-  inner = join([b * "," for b in latt.branches])
-  return "$(latt.name) = [$inner]"
+  branches = join(["Branch([$b], name = $(repr(b)))" for b in latt.branches], ", ")
+  return "$(latt.name) = Lattice([$branches], name = $(repr(latt.name)))"
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -232,7 +240,7 @@ function _ele_to_scibmad_str(ele::YAMLNode)
       referenceP = props["ReferenceP"]
       for k in keys(referenceP)
         if k == "species_ref"
-          push!(ref, "species_ref = $(String(referenceP[k]))")
+          push!(ref, "species_ref = Species($(repr(String(referenceP[k]))))")
         elseif k == "pc_ref"
           push!(ref, "pc_ref = $(String(referenceP[k]))")
         elseif k == "E_tot_ref"
@@ -411,7 +419,8 @@ function _make_scibmad_ele(ele::YAMLNode)
 
   for key in keys(props)
     if key == "kind"
-      push!(attrs, "kind = $(String(props["kind"]))")
+      kind = String(props["kind"])
+      push!(attrs, "kind = $(repr(get(_PALS_KIND_TO_SCIBMAD, kind, kind)))")
     elseif key == "length"
       push!(attrs, "L = $(String(props["length"]))")
     elseif key == "ACKickerP"
@@ -678,7 +687,7 @@ function _make_scibmad_ele(ele::YAMLNode)
         elseif rkey == "E_tot_ref"
           push!(attrs, "E_ref = $(String(refchangeP["E_tot_ref"]))")
         elseif rkey == "species_ref"
-          push!(attrs, "species_ref = $(String(refchangeP["species_ref"]))")
+          push!(attrs, "species_ref = Species($(repr(String(refchangeP["species_ref"]))))")
         end
       end
     end
