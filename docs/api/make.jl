@@ -26,6 +26,9 @@ makedocs(;
     # Flat .html files (not pretty dir URLs) so the "← Documentation" redirect
     # and the relative links back to the Sphinx site resolve correctly.
     prettyurls = false,
+    # The whole API reference is one page, which is over Documenter's 200 KiB default.
+    size_threshold      = 400 * 2^10,
+    size_threshold_warn = 300 * 2^10,
   ),
   pages = [
     "← Documentation" => "main-docs.md",
