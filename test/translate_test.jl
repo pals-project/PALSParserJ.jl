@@ -1504,4 +1504,55 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
     end
   end
 
+  @testset "a controller-driven multipole sets its element's multipole flags" begin
+    # A kicker whose field only its controller sets: one starts at zero, one does not state the
+    # field at all.
+    fixture = """
+      PALS:
+        facility:
+          - beg:
+              kind: BeginningEle
+              ReferenceP:
+                species_ref: electron
+                pc_ref: 18e9
+          - c1:
+              kind: Kicker
+              length: 0.2
+              MagneticMultipoleP:
+                Bn0: 0.0
+          - c2:
+              kind: Kicker
+              length: 0.2
+          - steer:
+              kind: Controller
+              variables:
+                current: 0.0
+              controls:
+                - parameter: c1>MagneticMultipoleP.Bn0
+                  expression: -1e-4 * current
+                - parameter: c2>MagneticMultipoleP.Bs0
+                  expression: 1e-4 * current
+          - line1:
+              kind: BeamLine
+              line: [beg, c1, c2]
+          - lat:
+              kind: Lattice
+              branches: [line1]
+      """
+    mktempdir() do dir
+      out = _bmad_text(dir, pals_to_bmad(_parsed(dir, fixture)))
+      # A zero field is not written, but the controller still drives B0 -- a field, not a fraction
+      # of the kicker's own strength, which is zero. An element that leaves the field to its
+      # controller altogether needs the same.
+      @test occursin("c1: Kicker,\n\tL = 0.2,\n\tfield_master = T,\n\tscale_multipoles = F\n", out)
+      @test occursin("c2: Kicker,\n\tL = 0.2,\n\tfield_master = T,\n\tscale_multipoles = F\n", out)
+      @test occursin("c1[B0]: 0.2*(-1e-4 * current)", out)
+      @test occursin("c2[A0]: 0.2*(1e-4 * current)", out)
+
+      # The element and its controller must agree on whether the multipoles are normalized.
+      @test_throws "c1: the multipoles of an element" pals_to_bmad(
+          _parsed(dir, replace(fixture, "Bn0: 0.0" => "Kn0: 0.0")))
+    end
+  end
+
 end

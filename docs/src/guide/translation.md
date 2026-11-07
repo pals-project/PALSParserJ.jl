@@ -306,6 +306,13 @@ and their SciBmad/Bmad/MAD-X equivalents.
   order with a skew part -- a `Ks1`/`Ks2`, or a `tilt1`/`tilt2` that rotates one into being --
   keeps both parts in the `An`/`Bn` form instead. A bend has no attribute above order 2, so its
   higher multipoles stay `An`/`Bn` either way.
+- Note (Bmad): Bmad reads an `An`/`Bn` on an ordinary element as a fraction of that element's
+  own strength, where a PALS multipole is the field integral itself, so an element carrying one
+  -- or having one driven by a controller, even if the element states it as zero or not at all
+  -- also gets `scale_multipoles = F`. Likewise a field (`Bn`, `Bs`), stated or driven, gives
+  `field_master = T`. The element's multipoles and those its controllers drive must be all
+  normalized or all fields. The kinds that hold nothing but multipoles do no such scaling and
+  have no such attribute.
 - Note (Bmad): PALS states a bend's field outright, where Bmad states its departure from the
   reference bend. So `Kn0` is translated as `dg = Kn0 - g_ref` -- against `1/radius_ref` when
   the reference bend is given as a radius, and against `Bn0_ref` when the field is not
