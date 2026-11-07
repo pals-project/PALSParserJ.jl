@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="prev" title="Evaluating expressions" href="expressions.html">
 
-    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+    <!-- Generated with Sphinx 9.1.1 and Furo 2025.12.19 -->
         <title>Translating to SciBmad, Bmad and MAD-X - PALSParserJ</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
@@ -586,6 +586,13 @@ added to a field the bend already has rather than the strength that makes it a b
 order with a skew part – a <code class="docutils literal notranslate"><span class="pre">Ks1</span></code>/<code class="docutils literal notranslate"><span class="pre">Ks2</span></code>, or a <code class="docutils literal notranslate"><span class="pre">tilt1</span></code>/<code class="docutils literal notranslate"><span class="pre">tilt2</span></code> that rotates one into being –
 keeps both parts in the <code class="docutils literal notranslate"><span class="pre">An</span></code>/<code class="docutils literal notranslate"><span class="pre">Bn</span></code> form instead. A bend has no attribute above order 2, so its
 higher multipoles stay <code class="docutils literal notranslate"><span class="pre">An</span></code>/<code class="docutils literal notranslate"><span class="pre">Bn</span></code> either way.</p></li>
+<li><p>Note (Bmad): Bmad reads an <code class="docutils literal notranslate"><span class="pre">An</span></code>/<code class="docutils literal notranslate"><span class="pre">Bn</span></code> on an ordinary element as a fraction of that element’s
+own strength, where a PALS multipole is the field integral itself, so an element carrying one
+– or having one driven by a controller, even if the element states it as zero or not at all
+– also gets <code class="docutils literal notranslate"><span class="pre">scale_multipoles</span> <span class="pre">=</span> <span class="pre">F</span></code>. Likewise a field (<code class="docutils literal notranslate"><span class="pre">Bn</span></code>, <code class="docutils literal notranslate"><span class="pre">Bs</span></code>), stated or driven, gives
+<code class="docutils literal notranslate"><span class="pre">field_master</span> <span class="pre">=</span> <span class="pre">T</span></code>. The element’s multipoles and those its controllers drive must be all
+normalized or all fields. The kinds that hold nothing but multipoles do no such scaling and
+have no such attribute.</p></li>
 <li><p>Note (Bmad): PALS states a bend’s field outright, where Bmad states its departure from the
 reference bend. So <code class="docutils literal notranslate"><span class="pre">Kn0</span></code> is translated as <code class="docutils literal notranslate"><span class="pre">dg</span> <span class="pre">=</span> <span class="pre">Kn0</span> <span class="pre">-</span> <span class="pre">g_ref</span></code> – against <code class="docutils literal notranslate"><span class="pre">1/radius_ref</span></code> when
 the reference bend is given as a radius, and against <code class="docutils literal notranslate"><span class="pre">Bn0_ref</span></code> when the field is not
