@@ -118,6 +118,8 @@ function pals_to_bmad(yaml::YAMLNode)
     end
   end
 
+  drives = _multipole_drives(facility)
+
   placeholders = Set{String}()
   N_lattices = 0
   for ele in facility
@@ -152,7 +154,8 @@ function pals_to_bmad(yaml::YAMLNode)
       # A Placeholder holds a place while a PALS lattice is built and is gone once it is.
       push!(placeholders, node_key(props))
     else
-      push!(lat.elements, _make_bmad_ele(ele; beginning_at_origin))
+      push!(lat.elements,
+            _make_bmad_ele(ele; beginning_at_origin, drive = get(drives, node_key(props), nothing)))
     end
   end
   for bl in lat.beamlines
@@ -630,6 +633,56 @@ end
 
 #---------------------------------------------------------------------------------------------------
 """
+    _MultipoleDrive
+
+How the controllers of a lattice drive one element's multipoles.
+
+- `normalized`: the conventions the driven multipoles are stated in -- `true` for a normalized
+  `K` parameter, `false` for a field `B` one.
+- `multipole`: whether any of them lands in a Bmad `An`/`Bn` attribute rather than in the
+  element's own strength attribute.
+"""
+mutable struct _MultipoleDrive
+  normalized::Set{Bool}
+  multipole::Bool
+end
+
+"""
+    _multipole_drives(facility::YAMLNode)
+
+The multipoles each element of `facility` has driven by a controller, as a map from element
+name to [`_MultipoleDrive`](@ref).
+
+The element translation needs this as well as the element's own parameters: which convention
+Bmad reads a multipole in (`field_master`) and whether it reads one as a fraction of the
+element's strength (`scale_multipoles`) are settings of the element, and a controller-driven
+multipole needs them right whatever value, zero included, the element starts out with -- or
+whether it states the multipole at all.
+"""
+function _multipole_drives(facility::YAMLNode)
+  drives = Dict{String,_MultipoleDrive}()
+  for ele in facility
+    props = ele[1]
+    haskey(props, "kind") && String(props["kind"]) == "Controller" && haskey(props, "controls") ||
+        continue
+    cname = node_key(props)
+    for control in props["controls"]
+      haskey(control, "parameter") || continue
+      param = String(control["parameter"])
+      m = match(r"^MagneticMultipoleP\.([KB])([ns])([0-9]+)(L?)$", last(split(param, ">")))
+      m === nothing && continue
+      target, _, _ = _bmad_control_target(cname, param, facility)
+      slave, attribute = split(chop(target), "[")
+      drive = get!(() -> _MultipoleDrive(Set{Bool}(), false), drives, String(slave))
+      push!(drive.normalized, m[1] == "K")
+      occursin(r"^[AB][0-9]+$", attribute) && (drive.multipole = true)
+    end
+  end
+  return drives
+end
+
+#---------------------------------------------------------------------------------------------------
+"""
     _make_bmad_controller(ele::YAMLNode, facility::YAMLNode)
 
 Translate a `Controller` element into a [`BmadController`](@ref).
@@ -1082,7 +1135,7 @@ end
 
 #---------------------------------------------------------------------------------------------------
 """
-    _make_bmad_ele(ele::YAMLNode; beginning_at_origin = true)
+    _make_bmad_ele(ele::YAMLNode; beginning_at_origin = true, drive = nothing)
 
 Translate a single PALS element into a [`BmadEleDef`](@ref).
 
@@ -1094,8 +1147,12 @@ A `FloorShift` or `Fiducial` is placed by its `CoordinateSetP` and `BodyShiftP` 
 [`_bmad_placement`](@ref)); `beginning_at_origin` says whether the lattice leaves its
 beginning element at the global origin, which is what a FloorShift placed from the global
 origin is placed from in Bmad.
+
+`drive` is how controllers drive the element's multipoles (see [`_multipole_drives`](@ref)),
+which decides the multipole settings along with the element's own `MagneticMultipoleP`.
 """
-function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
+function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true,
+                        drive::Union{_MultipoleDrive,Nothing} = nothing)
   props = ele[1]
   ele_kind = String(props["kind"])
   ele_kind_bmad, args = _bmad_kind(ele_kind)
@@ -1108,6 +1165,31 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
     t = rstrip(s)
     endswith(t, ",") && (t = rstrip(t[1:end-1]))
     isempty(t) || push!(attrs, t)
+  end
+
+  # Bmad reads all of an element's multipoles in the one convention, so the element's own and
+  # those its controllers drive have to agree.
+  driven = drive === nothing ? Set{Bool}() : drive.normalized
+  function push_field_master!(normalized)
+    conventions = union(Set{Bool}(normalized), driven)
+    length(conventions) > 1 &&
+        error("$(node_key(props)): the multipoles of an element, and those controllers drive, " *
+              "must be all normalized or all unnormalized")
+    # field_master = F is the default.
+    conventions == Set([false]) && ele_kind != "RFCavity" && push_attr!("field_master = T")
+  end
+
+  # Bmad reads An/Bn on an ordinary element as fractions of that element's own strength,
+  # scaling them by K1*L for a quadrupole, K2*L for a sextupole, and so on. PALS multipoles are
+  # the field integrals themselves, so the scaling has to be turned off -- for one a controller
+  # drives as much as for one the element states, even when the element's own value is zero and
+  # so is not written. The kinds that hold nothing but multipoles do not scale, and have no such
+  # attribute to set.
+  function push_scale_multipoles!(mp_attrs)
+    if (any(a -> startswith(a, r"[AB][0-9]"), mp_attrs) || (drive !== nothing && drive.multipole)) &&
+           ele_kind_bmad ∉ ("AB_Multipole", "Multipole", "SAD_Mult")
+      push_attr!("scale_multipoles = F")
+    end
   end
 
   for key in keys(props)
@@ -1282,13 +1364,7 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
 
       _fill_multipoles!(full, mmP, node_key(ele[1]))
 
-      if all(values(full.normalized))
-        # push_attr!("field_master = F") # (Default)
-      elseif all(!, values(full.normalized)) && ele_kind != "RFCavity"
-        push_attr!("field_master = T")
-      else
-        error("$(node_key(props)): Multipoles of one element must be all normalized or all unnormalized.")
-      end
+      push_field_master!(values(full.normalized))
 
       # The multipoles that are the element's own strength become Bmad strength attributes; the
       # rest stay multipoles. A bend's order-0 attribute is `DG`, which Bmad measures from the
@@ -1300,15 +1376,7 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
       rep = _KindMap(ele_kind)(full)   # pick the element-specific representation, then down-convert
       mp_attrs = _mp_key(rep)
       append!(attrs, mp_attrs)
-
-      # Bmad reads An/Bn on an ordinary element as fractions of that element's own strength,
-      # scaling them by K1*L for a quadrupole, K2*L for a sextupole, and so on. PALS multipoles
-      # are the field integrals themselves, so the scaling has to be turned off. The kinds that
-      # hold nothing but multipoles do not scale, and have no such attribute to set.
-      if any(a -> startswith(a, r"[AB][0-9]"), mp_attrs) &&
-             ele_kind_bmad ∉ ("AB_Multipole", "Multipole", "SAD_Mult")
-        push_attr!("scale_multipoles = F")
-      end
+      push_scale_multipoles!(mp_attrs)
 
     elseif key == "MetaP"
       metaP = props["MetaP"]
@@ -1481,6 +1549,13 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true)
         end
       end
     end
+  end
+
+  # An element whose multipoles only its controllers state still needs them read the way the
+  # controllers mean them.
+  if !haskey(props, "MagneticMultipoleP")
+    push_field_master!(())
+    push_scale_multipoles!(())
   end
 
   return BmadEleDef(node_key(ele[1]), ele_kind_bmad, attrs)
