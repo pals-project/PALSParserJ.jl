@@ -773,6 +773,24 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
     end
   end
 
+  @testset "Bmad puts dpz first in the initial chromatic Twiss names" begin
+    for (pals_name, bmad_name) in [("dbeta_a_dpz",  "dbeta_dpz_a"),
+                                   ("dbeta_b_dpz",  "dbeta_dpz_b"),
+                                   ("dalpha_a_dpz", "dalpha_dpz_a"),
+                                   ("dalpha_b_dpz", "dalpha_dpz_b"),
+                                   ("deta_x_dpz",   "deta_dpz_x"),
+                                   ("deta_y_dpz",   "deta_dpz_y"),
+                                   ("detap_x_dpz",  "detap_dpz_x"),
+                                   ("detap_y_dpz",  "detap_dpz_y")]
+      mktempdir() do dir
+        fixture = replace(_TRANSLATE_FIXTURE, "beta_a: 10" => "$pals_name: 1.25")
+        out = _bmad_text(dir, pals_to_bmad(_parsed(dir, fixture)))
+        @test occursin("beginning[$bmad_name] = 1.25", out)
+        @test !occursin("beginning[$pals_name]", out)
+      end
+    end
+  end
+
   @testset "pals_to_madx / write_madx_file writes a MAD-X lattice file" begin
     mktempdir() do dir
       madx = pals_to_madx(_parsed(dir, _TRANSLATE_FIXTURE))
