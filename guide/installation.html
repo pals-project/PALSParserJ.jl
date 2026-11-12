@@ -261,7 +261,7 @@ elsewhere</a> instead.</p>
 <p>macOS, Linux, and Windows are all supported — the correct library extension for
 the platform (<code class="docutils literal notranslate"><span class="pre">.dylib</span></code>, <code class="docutils literal notranslate"><span class="pre">.so</span></code>, <code class="docutils literal notranslate"><span class="pre">.dll</span></code>) is worked out at load time.</p>
 <section id="clone-the-repositories">
-<h2>1. Clone the repositories<a class="headerlink" href="#clone-the-repositories" title="Link to this heading">¶</a></h2>
+<span id="1-clone-the-repositories"></span><h2>1. Clone the repositories<a class="headerlink" href="#clone-the-repositories" title="Link to this heading">¶</a></h2>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">git clone https://github.com/pals-project/PALSParserCpp.git</span>
 <span class="go">git clone https://github.com/pals-project/PALSParserJ.jl.git</span>
 </pre></div>
@@ -277,7 +277,7 @@ relative to its own source tree, at <code class="docutils literal notranslate"><
 </div>
 </section>
 <section id="build-the-c-library">
-<h2>2. Build the C library<a class="headerlink" href="#build-the-c-library" title="Link to this heading">¶</a></h2>
+<span id="2-build-the-c-library"></span><h2>2. Build the C library<a class="headerlink" href="#build-the-c-library" title="Link to this heading">¶</a></h2>
 <p>From the <code class="docutils literal notranslate"><span class="pre">PALSParserCpp</span></code> directory, configure and build with CMake (this needs
 CMake and a C++17 compiler — Apple Clang on macOS, GCC or Clang on Linux, MSVC
 on Windows):</p>
@@ -292,7 +292,7 @@ Rebuild with <code class="docutils literal notranslate"><span class="pre">cmake<
 the PALSParserCpp <code class="docutils literal notranslate"><span class="pre">README</span></code> for more detail.</p>
 </section>
 <section id="activate-the-julia-project">
-<h2>3. Activate the Julia project<a class="headerlink" href="#activate-the-julia-project" title="Link to this heading">¶</a></h2>
+<span id="3-activate-the-julia-project"></span><h2>3. Activate the Julia project<a class="headerlink" href="#activate-the-julia-project" title="Link to this heading">¶</a></h2>
 <p>From the <code class="docutils literal notranslate"><span class="pre">PALSParserJ</span></code> directory:</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">Pkg</span>
 <span class="n">Pkg</span><span class="o">.</span><span class="n">activate</span><span class="p">(</span><span class="s">"."</span><span class="p">)</span>
