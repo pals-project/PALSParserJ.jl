@@ -109,7 +109,7 @@ const BROKEN_LATTICE = """
 PALS:
   facility:
     - constants:
-        a_const: 0.3 * undefined_thing
+        - a_const: 0.3 * undefined_thing
     - thingB:
         kind: Sextupole
         MagneticMultipoleP:
@@ -140,8 +140,8 @@ const SPECIES_CONST_LATTICE = """
 PALS:
   facility:
     - constants:
-        species: "#3He"
-        b_const: 0.45 * mass_of(species)
+        - species: "#3He"
+        - b_const: 0.45 * mass_of(species)
     - DH1A:
         kind: Bend
         ReferenceP:
@@ -253,13 +253,13 @@ PALS:
       dh1a = inlined(lat, "lat1", "main_line", "DH1A")
 
       # mass_of(species) resolves the `species: "#3He"` constant by name.
-      @test Float64(consts["b_const"]) ≈ 0.45 * m_3he
+      @test Float64(consts[2]["b_const"]) ≈ 0.45 * m_3he
       @test Float64(dh1a["BendP"]["h1"]) ≈ 1.1 * m_3he
       # A bare identifier naming the species constant (species_ref: species) is
       # replaced by its species-name string in the expanded tree.
       @test String(dh1a["ReferenceP"]["species_ref"]) == "#3He"
       # The species constant itself keeps its string species name.
-      @test String(consts["species"]) == "#3He"
+      @test String(consts[1]["species"]) == "#3He"
     end
   end
 

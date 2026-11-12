@@ -587,7 +587,7 @@ const _PLACEMENT_FIXTURE = """
           length: 1.3
           RFP:
             voltage: 1E6
-            harmon: 10
+            harmonic_number: 10
             phase: pi/2
             multipass_phase: 0.5
             zero_phase: BELOW_TRANSITION
@@ -698,7 +698,7 @@ const _SCIBMAD_FORMS_FIXTURE = """
           kind: RFCavity
           length: 0.5
           RFP:
-            harmon: 10
+            harmonic_number: 10
             voltage: 2.0e6
       - cell:
           kind: BeamLine

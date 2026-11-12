@@ -675,8 +675,8 @@ function _make_scibmad_ele(ele::YAMLNode)
       for rfkey in keys(rfP)
         if rfkey == "frequency"
           push!(attrs, "rf_frequency = $(String(rfP["frequency"]))")
-        elseif rfkey == "harmon"
-          push!(attrs, "harmon = $(String(rfP["harmon"]))")
+        elseif rfkey == "harmonic_number"
+          push!(attrs, "harmon = $(String(rfP["harmonic_number"]))")
         elseif rfkey == "voltage"
           push!(attrs, "voltage = $(String(rfP["voltage"]))")
         elseif rfkey == "gradient"

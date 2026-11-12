@@ -1633,8 +1633,8 @@ function _make_madx_ele(ele::YAMLNode)
       end
     elseif key == "RFP"
       rfP = props["RFP"]
-      if haskey(rfP, "frequency") && haskey(rfP, "harmon")
-        error("$name: can only define `frequency` or `harmon` but not both")
+      if haskey(rfP, "frequency") && haskey(rfP, "harmonic_number")
+        error("$name: can only define `frequency` or `harmonic_number` but not both")
       end
       # MAD-X's zero phase is the zero crossing half a period away from the one PALS calls the
       # stable point above transition, whichever of the three PALS is measuring from.
@@ -1649,8 +1649,8 @@ function _make_madx_ele(ele::YAMLNode)
         # PALS states the frequency in Hz and the voltage in volts, MAD-X in MHz and MV.
         if rfkey == "frequency"
           tmp = "freq = $(_madx_scale(String(rfP["frequency"]), 1e-6)),"
-        elseif rfkey == "harmon"
-          tmp = "harmon = $(String(rfP["harmon"])),"
+        elseif rfkey == "harmonic_number"
+          tmp = "harmon = $(String(rfP["harmonic_number"])),"
         elseif rfkey == "voltage"
           tmp = "volt = $(_madx_scale(String(rfP["voltage"]), 1e-6)),"
         elseif rfkey == "gradient"
