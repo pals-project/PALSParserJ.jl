@@ -390,6 +390,40 @@ function original_node(lat::Lattices, node::YAMLNode)
   return id == YAML_NULL_ID ? nothing : YAMLNode(lat.original.tree, id)
 end
 
+"""
+    controller_expressions(lat::Lattices, node::YAMLNode) -> Vector{YAMLNode}
+
+The controllers driving a parameter. `node` is a parameter's value node in
+`lat.expanded` or `lat.full_expanded`. For each `controls` entry reaching it,
+ABSOLUTE or RELATIVE, the result holds that entry's `expression` node in
+`lat.original`, in the order the controllers were evaluated. Several
+controllers may drive one parameter (ABSOLUTE ones sum), which is why this is a
+list. It is empty when no controller drives `node`.
+
+The controller itself is three [`get_parent`](@ref) steps up from an
+expression: the `controls` entry, the `controls` list, then the controller.
+
+# Example
+```julia
+for e in controller_expressions(lat, kn1)
+  ctrl = get_parent(get_parent(get_parent(e)))
+  println(node_key(ctrl), ": ", String(e))   # e.g. "ps1: 2 * cur"
+end
+```
+"""
+function controller_expressions(lat::Lattices, node::YAMLNode)
+  l = @ccall $(_csym(:controller_expressions))(
+    lat.combined.tree.handle::Ptr{Cvoid}, node.tree.handle::Ptr{Cvoid},
+    node.id::Csize_t)::NodeListC
+  ids = try
+    n = Int(l.count)
+    n == 0 ? Csize_t[] : copy(unsafe_wrap(Array, l.nodes, n))
+  finally
+    @ccall $(_csym(:free_node_list))(l::NodeListC)::Cvoid
+  end
+  return YAMLNode[YAMLNode(lat.original.tree, id) for id in ids]
+end
+
 # ─── name matching ────────────────────────────────────────────────────────────
 
 """

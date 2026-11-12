@@ -221,6 +221,13 @@ struct NameMatchesC
   count::Csize_t
 end
 
+# Raw C struct for controller_expressions. Mirrors `struct node_list` from
+# PALSParserCpp.h: a flat array of node ids and its length.
+struct NodeListC
+  nodes::Ptr{Csize_t}
+  count::Csize_t
+end
+
 #---------------------------------------------------------------------------------------------------
 
 # Raw C struct returned by parameter_value. Mirrors `struct param_value`
