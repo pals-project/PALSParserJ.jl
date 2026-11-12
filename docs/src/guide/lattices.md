@@ -180,7 +180,7 @@ tuple whose fields — `original`, `combined`, `full_expanded`, `adjunct` — ar
 `Vector{YAMLNode}` listing the corresponding nodes in that view:
 
 ```julia
-a_const = lat.combined["PALS"]["facility"][1]["constants"]["a_const"]
+a_const = lat.combined["PALS"]["facility"][1]["constants"][1]["a_const"]
 
 corr[a_const].original       # [ the a_const node in the original tree ]
 corr[a_const].adjunct       # [ the a_const node in the adjunct tree ]
@@ -238,6 +238,35 @@ vector is empty.
     merged, or renamed during expansion.
 
 A runnable version of these examples is in `examples/node_correspondence.jl`.
+
+### The expression behind a value
+
+Every value in the expanded trees is a number. `original_node(lat, node)`
+returns the node of `original` that one node came from: the text it was written
+as. It takes a node of `expanded` as well as `full_expanded`, `adjunct` and
+`combined`, and answers for that one node without building the whole map.
+
+```julia
+src = pj.original_node(lat, kn1)        # kn1: a value node in lat.expanded
+startswith(String(src), "expr(")        # was the value delayed?
+```
+
+A value written by a `set` leads to that set's `value`, not to the value it
+replaced. `nothing` comes back for a value the parser computed, and for one an
+ABSOLUTE controller drives, whose value is the controllers' rather than any one
+text's.
+
+For a controlled parameter, `controller_expressions(lat, node)` lists every
+controller driving it, ABSOLUTE or RELATIVE: each `controls` entry's
+`expression` node in `original`, in evaluation order. Three `get_parent` steps
+from an expression reach its controller.
+
+```julia
+for e in pj.controller_expressions(lat, kn1)
+    ctrl = pj.get_parent(pj.get_parent(pj.get_parent(e)))
+    println(pj.node_key(ctrl), ": ", String(e))
+end
+```
 
 ## Matching constructs by name
 

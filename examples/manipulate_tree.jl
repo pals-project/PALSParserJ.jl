@@ -36,7 +36,7 @@ println("The first element of 'facility' is: \n", pj.to_yaml_string(first_ele))
 
 # accessing map
 println("Elements in a map may be accessed by their key.")
-a_const = first_ele["constants"]["a_const"]
+a_const = first_ele["constants"][1]["a_const"]
 println("The 'a_const' constant has the value:\n    ", pj.to_yaml_string(a_const))
 
 # add a new sequence element to the facility containing new_map: {apples: 5}

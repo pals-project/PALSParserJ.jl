@@ -1,6 +1,6 @@
 using Test
 using PALSParserJ
-using PALSParserJ: parse_and_expand_pals, node_correspondence, parse_string
+using PALSParserJ: parse_and_expand_pals, node_correspondence, parse_string, node_key
 
 # A self-contained lattice: `a_const` sits outside the expanded lattice (so it
 # is left over rather than expanded), while `repeat: 3` exercises the
@@ -118,6 +118,140 @@ PALS:
       # A freshly built, unrelated tree shares no nodes with the correspondence.
       other = parse_string("stray: node")
       @test !haskey(corr, other)
+    end
+  end
+end
+
+const SOURCE_LATTICE = """
+PALS:
+  facility:
+    - q1:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: 0.5
+    - q2:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: expr(2 * q1>MagneticMultipoleP.Kn1)
+    - q3:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: 0.1
+    - set:
+        parameter: q3>MagneticMultipoleP.Kn1
+        value: expr(3 * q1>MagneticMultipoleP.Kn1)
+    - ln:
+        kind: BeamLine
+        line:
+          - begin:
+              kind: BeginningEle
+              ReferenceP: {species_ref: electron, E_tot_ref: 1.0e9}
+          - q1
+          - q2
+          - q3
+    - lat1:
+        kind: Lattice
+        branches:
+          - ln
+    - use: lat1
+"""
+
+@testset "original_node" begin
+  mktempdir() do dir
+    path = joinpath(dir, "source.pals.yaml")
+    write(path, SOURCE_LATTICE)
+    lat = parse_and_expand_pals(path)
+
+    for tree in (lat.expanded, lat.full_expanded)
+      line = tree["lat1"]["branches"][1]["ln"]["line"]
+      kn1(i, name) = line[i][name]["MagneticMultipoleP"]["Kn1"]
+      @test String(original_node(lat, kn1(2, "q1"))) == "0.5"
+      @test String(original_node(lat, kn1(3, "q2"))) ==
+            "expr(2 * q1>MagneticMultipoleP.Kn1)"
+      # Written by a set: the set's value, not the 0.1 it replaced.
+      @test String(original_node(lat, kn1(4, "q3"))) ==
+            "expr(3 * q1>MagneticMultipoleP.Kn1)"
+      @test original_node(lat, kn1(2, "q1")).tree === lat.original.tree
+    end
+
+    # Computed by the parser: no source.
+    floor_z = lat.full_expanded["lat1"]["branches"][1]["ln"]["line"][2]["q1"]["FloorP"]["z"]
+    @test original_node(lat, floor_z) === nothing
+  end
+end
+
+const CONTROLLED_LATTICE = """
+PALS:
+  facility:
+    - q1:
+        kind: Quadrupole
+    - q2:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: 0.3
+    - q3:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: 0.2
+    - ps1:
+        kind: Controller
+        variables:
+          cur: 0.25
+        controls:
+          - parameter: q1>MagneticMultipoleP.Kn1
+            expression: 2 * cur
+    - ps2:
+        kind: Controller
+        variables:
+          cur: 0.1
+        controls:
+          - parameter: q1>MagneticMultipoleP.Kn1
+            expression: cur
+    - knob:
+        kind: Controller
+        control_type: RELATIVE
+        variables:
+          k: 0.0
+        controls:
+          - parameter: q2>MagneticMultipoleP.Kn1
+            expression: 3 * k
+    - ln:
+        kind: BeamLine
+        line:
+          - begin:
+              kind: BeginningEle
+              ReferenceP: {species_ref: electron, E_tot_ref: 1.0e9}
+          - q1
+          - q2
+          - q3
+    - lat1:
+        kind: Lattice
+        branches:
+          - ln
+    - use: lat1
+"""
+
+@testset "controller_expressions" begin
+  mktempdir() do dir
+    path = joinpath(dir, "controlled.pals.yaml")
+    write(path, CONTROLLED_LATTICE)
+    lat = parse_and_expand_pals(path)
+
+    for tree in (lat.expanded, lat.full_expanded)
+      line = tree["lat1"]["branches"][1]["ln"]["line"]
+      kn1(i, name) = line[i][name]["MagneticMultipoleP"]["Kn1"]
+      described(i, name) = [
+        string(node_key(PALSParserJ.get_parent(PALSParserJ.get_parent(PALSParserJ.get_parent(e)))),
+               ": ", String(e))
+        for e in controller_expressions(lat, kn1(i, name))]
+      # Two ABSOLUTE controllers sum into q1, in evaluation order.
+      @test described(2, "q1") == ["ps1: 2 * cur", "ps2: cur"]
+      @test described(3, "q2") == ["knob: 3 * k"]
+      @test isempty(controller_expressions(lat, kn1(4, "q3")))
+      @test all(e -> e.tree === lat.original.tree,
+                controller_expressions(lat, kn1(2, "q1")))
+      # A controller-driven value has no single source text.
+      @test original_node(lat, kn1(2, "q1")) === nothing
     end
   end
 end

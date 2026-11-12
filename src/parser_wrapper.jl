@@ -273,7 +273,7 @@ constant that the lattice never references exists only in `adjunct`).
 lat = parse_and_expand_pals("lattice.pals.yaml")
 corr = node_correspondence(lat)
 
-a_const = lat.combined["PALS"]["facility"][1]["constants"]["a_const"]
+a_const = lat.combined["PALS"]["facility"][1]["constants"][1]["a_const"]
 corr[a_const].original       # the same constant in the original tree
 corr[a_const].adjunct       # constants are not part of the lattice, so they land here
 corr[a_const].full_expanded  # empty unless the lattice referenced it
@@ -354,6 +354,74 @@ function node_correspondence(lat::Lattices)
     end
   end
   return result
+end
+
+"""
+    original_node(lat::Lattices, node::YAMLNode) -> Union{YAMLNode,Nothing}
+
+The node of `lat.original` that `node` came from: the text it was written as.
+`node` may be in `lat.expanded`, `lat.full_expanded`, `lat.adjunct` or
+`lat.combined`.
+
+Every value in the expanded trees is a number. This leads back to the
+expression it was evaluated from, so a program can tell, for instance, whether
+it was delayed (`expr(...)`). A parameter written by a `set` leads to that
+set's `value`, the text that gave it its value, not to the value it replaced.
+
+Returns `nothing` for a value the parser computed (a `FloorP` coordinate, say),
+and for one an ABSOLUTE controller drives: that value is the controllers' (several
+may sum), not any one text's.
+
+Unlike [`node_correspondence`](@ref), this answers for one node and also takes
+the `expanded` tree.
+
+# Example
+```julia
+lat = parse_and_expand_pals("lattice.pals.yaml")
+kn1 = lat.expanded["lat1"]["branches"][1]["ln"]["line"][2]["q2"]["MagneticMultipoleP"]["Kn1"]
+src = original_node(lat, kn1)
+startswith(String(src), "expr(")   # true if the value was delayed
+```
+"""
+function original_node(lat::Lattices, node::YAMLNode)
+  id = @ccall $(_csym(:original_node))(
+    lat.combined.tree.handle::Ptr{Cvoid}, node.tree.handle::Ptr{Cvoid},
+    node.id::Csize_t)::Csize_t
+  return id == YAML_NULL_ID ? nothing : YAMLNode(lat.original.tree, id)
+end
+
+"""
+    controller_expressions(lat::Lattices, node::YAMLNode) -> Vector{YAMLNode}
+
+The controllers driving a parameter. `node` is a parameter's value node in
+`lat.expanded` or `lat.full_expanded`. For each `controls` entry reaching it,
+ABSOLUTE or RELATIVE, the result holds that entry's `expression` node in
+`lat.original`, in the order the controllers were evaluated. Several
+controllers may drive one parameter (ABSOLUTE ones sum), which is why this is a
+list. It is empty when no controller drives `node`.
+
+The controller itself is three [`get_parent`](@ref) steps up from an
+expression: the `controls` entry, the `controls` list, then the controller.
+
+# Example
+```julia
+for e in controller_expressions(lat, kn1)
+  ctrl = get_parent(get_parent(get_parent(e)))
+  println(node_key(ctrl), ": ", String(e))   # e.g. "ps1: 2 * cur"
+end
+```
+"""
+function controller_expressions(lat::Lattices, node::YAMLNode)
+  l = @ccall $(_csym(:controller_expressions))(
+    lat.combined.tree.handle::Ptr{Cvoid}, node.tree.handle::Ptr{Cvoid},
+    node.id::Csize_t)::NodeListC
+  ids = try
+    n = Int(l.count)
+    n == 0 ? Csize_t[] : copy(unsafe_wrap(Array, l.nodes, n))
+  finally
+    @ccall $(_csym(:free_node_list))(l::NodeListC)::Cvoid
+  end
+  return YAMLNode[YAMLNode(lat.original.tree, id) for id in ids]
 end
 
 # ─── name matching ────────────────────────────────────────────────────────────
