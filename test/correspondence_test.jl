@@ -121,3 +121,61 @@ PALS:
     end
   end
 end
+
+const SOURCE_LATTICE = """
+PALS:
+  facility:
+    - q1:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: 0.5
+    - q2:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: expr(2 * q1>MagneticMultipoleP.Kn1)
+    - q3:
+        kind: Quadrupole
+        MagneticMultipoleP:
+          Kn1: 0.1
+    - set:
+        parameter: q3>MagneticMultipoleP.Kn1
+        value: expr(3 * q1>MagneticMultipoleP.Kn1)
+    - ln:
+        kind: BeamLine
+        line:
+          - begin:
+              kind: BeginningEle
+              ReferenceP: {species_ref: electron, E_tot_ref: 1.0e9}
+          - q1
+          - q2
+          - q3
+    - lat1:
+        kind: Lattice
+        branches:
+          - ln
+    - use: lat1
+"""
+
+@testset "original_node" begin
+  mktempdir() do dir
+    path = joinpath(dir, "source.pals.yaml")
+    write(path, SOURCE_LATTICE)
+    lat = parse_and_expand_pals(path)
+
+    for tree in (lat.expanded, lat.full_expanded)
+      line = tree["lat1"]["branches"][1]["ln"]["line"]
+      kn1(i, name) = line[i][name]["MagneticMultipoleP"]["Kn1"]
+      @test String(original_node(lat, kn1(2, "q1"))) == "0.5"
+      @test String(original_node(lat, kn1(3, "q2"))) ==
+            "expr(2 * q1>MagneticMultipoleP.Kn1)"
+      # Written by a set: the set's value, not the 0.1 it replaced.
+      @test String(original_node(lat, kn1(4, "q3"))) ==
+            "expr(3 * q1>MagneticMultipoleP.Kn1)"
+      @test original_node(lat, kn1(2, "q1")).tree === lat.original.tree
+    end
+
+    # Computed by the parser: no source.
+    floor_z = lat.full_expanded["lat1"]["branches"][1]["ln"]["line"][2]["q1"]["FloorP"]["z"]
+    @test original_node(lat, floor_z) === nothing
+  end
+end
