@@ -478,6 +478,16 @@ as. It takes a node of <code class="docutils literal notranslate"><span class="p
 replaced. <code class="docutils literal notranslate"><span class="pre">nothing</span></code> comes back for a value the parser computed, and for one an
 ABSOLUTE controller drives, whose value is the controllers’ rather than any one
 text’s.</p>
+<p>For a controlled parameter, <code class="docutils literal notranslate"><span class="pre">controller_expressions(lat,</span> <span class="pre">node)</span></code> lists every
+controller driving it, ABSOLUTE or RELATIVE: each <code class="docutils literal notranslate"><span class="pre">controls</span></code> entry’s
+<code class="docutils literal notranslate"><span class="pre">expression</span></code> node in <code class="docutils literal notranslate"><span class="pre">original</span></code>, in evaluation order. Three <code class="docutils literal notranslate"><span class="pre">get_parent</span></code> steps
+from an expression reach its controller.</p>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">for</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">pj</span><span class="o">.</span><span class="n">controller_expressions</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span><span class="w"> </span><span class="n">kn1</span><span class="p">)</span>
+<span class="w">    </span><span class="n">ctrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pj</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">pj</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">pj</span><span class="o">.</span><span class="n">get_parent</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+<span class="w">    </span><span class="n">println</span><span class="p">(</span><span class="n">pj</span><span class="o">.</span><span class="n">node_key</span><span class="p">(</span><span class="n">ctrl</span><span class="p">),</span><span class="w"> </span><span class="s">": "</span><span class="p">,</span><span class="w"> </span><span class="kt">String</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+<span class="k">end</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="matching-constructs-by-name">

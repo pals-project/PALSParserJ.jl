@@ -256,6 +256,18 @@ replaced. `nothing` comes back for a value the parser computed, and for one an
 ABSOLUTE controller drives, whose value is the controllers' rather than any one
 text's.
 
+For a controlled parameter, `controller_expressions(lat, node)` lists every
+controller driving it, ABSOLUTE or RELATIVE: each `controls` entry's
+`expression` node in `original`, in evaluation order. Three `get_parent` steps
+from an expression reach its controller.
+
+```julia
+for e in pj.controller_expressions(lat, kn1)
+    ctrl = pj.get_parent(pj.get_parent(pj.get_parent(e)))
+    println(pj.node_key(ctrl), ": ", String(e))
+end
+```
+
 ## Matching constructs by name
 
 Once a lattice is expanded, `match_names` finds every named construct that a
