@@ -1451,8 +1451,8 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true,
           tmp *= "rf_frequency = $(String(rfP["frequency"])), "
           tmp *= "harmon_master = false,"
 
-        elseif rfkey == "harmon"
-          tmp *= "harmon = $(String(rfP["harmon"])), "
+        elseif rfkey == "harmonic_number"
+          tmp *= "harmon = $(String(rfP["harmonic_number"])), "
           tmp *= "harmon_master = true,"
 
         elseif rfkey == "voltage"
@@ -1498,8 +1498,8 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true,
         end
         push_attr!(tmp)
       end
-      if haskey(rfP, "frequency") && haskey(rfP, "harmon")
-        error("$(node_key(props)): can only define `frequency` or `harmon` but not both")
+      if haskey(rfP, "frequency") && haskey(rfP, "harmonic_number")
+        error("$(node_key(props)): can only define `frequency` or `harmonic_number` but not both")
       end
     elseif key == "SolenoidP"
       solP = props["SolenoidP"]

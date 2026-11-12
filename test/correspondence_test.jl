@@ -9,7 +9,7 @@ const CORR_LATTICE = """
 PALS:
   facility:
     - constants:
-        a_const: 0.3 * r_electron
+        - a_const: 0.3 * r_electron
     - d1:
         kind: Drift
         length: 2.0
@@ -49,7 +49,7 @@ PALS:
     # a_const is not part of the lattice and nothing in it refers to a_const, so
     # expansion leaves it behind: one node in original, combined and adjunct,
     # and none in expanded.
-    a_const = lat.combined["PALS"]["facility"][1]["constants"]["a_const"]
+    a_const = lat.combined["PALS"]["facility"][1]["constants"][1]["a_const"]
     entry = corr[a_const]
 
     @testset "a node outside the lattice maps into adjunct, not expanded" begin

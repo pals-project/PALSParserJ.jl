@@ -391,8 +391,8 @@ and their SciBmad/Bmad/MAD-X equivalents.
 
 ### RFP --> RFParams
 - frequency --> rate, rate_meaning = false
-- harmon --> rate, if rate_meaning = true
-- if neither frequency or harmon exist, set rate_meaning = -1
+- harmonic_number --> rate, if rate_meaning = true
+- if neither frequency or harmonic_number exist, set rate_meaning = -1
 - voltage --> voltage
 - gradient --> none
 - phase --> phi0 (both in radians)
@@ -406,7 +406,7 @@ and their SciBmad/Bmad/MAD-X equivalents.
     - BELOW_TRANSITION --> BelowTransition
     - ABOVE_TRANSITION --> AboveTransition
 
-- Note (MAD-X): frequency --> `freq` in MHz, harmon --> `harmon`,
+- Note (MAD-X): frequency --> `freq` in MHz, harmonic_number --> `harmon`,
   voltage --> `volt` in MV, gradient --> `volt = gradient * L_active`.
 - Note (Bmad): gradient --> `voltage = gradient * L_active` (`L_active` defaulting to the
   element length), Bmad's `gradient` being a dependent attribute.

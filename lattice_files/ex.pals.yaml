@@ -2,12 +2,12 @@ PALS:
   facility:
 
     - constants:
-        a_const: 0.3 * r_electron
-        b_const: 0.45
+        - a_const: 0.3 * r_electron
+        - b_const: 0.45
 
     - variables:
-        a_var: a_const^2
-        b_var: 0.37 * atan2(0.1, 0.2)
+        - a_var: a_const^2
+        - b_var: 0.37 * atan2(0.1, 0.2)
 
     - include: "include.pals.yaml"
 
