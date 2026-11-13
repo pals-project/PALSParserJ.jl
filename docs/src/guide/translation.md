@@ -431,6 +431,10 @@ and their SciBmad/Bmad/MAD-X equivalents.
 - Note (MAD-X): tracking parameters are program specific by design and are skipped.
 
 ### TwissP --> initial conditions
+- Note (Bmad): the group becomes `beginning[...]` settings, which PALS and Bmad
+  name alike bar the coupling matrix's underscore (`cmat11` --> `cmat_11`) and
+  the derivatives, where Bmad puts `dpz` or `ds` before the plane or mode
+  (`dbeta_a_dpz` --> `dbeta_dpz_a`, `deta_x_ds` --> `deta_ds_x`).
 - Note (MAD-X): the group becomes a `BETA0` block. beta_a --> betx,
   beta_b --> bety, alpha_a --> alfx, alpha_b --> alfy, phi_a --> `mux = phi_a/2pi`
   (MAD-X counts the phase in turns), eta_x --> `dx = eta_x / beam->beta`, and
