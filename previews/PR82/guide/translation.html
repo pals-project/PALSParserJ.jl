@@ -742,6 +742,10 @@ length also needs MAD-X’s integrated <code class="docutils literal notranslate
 <section id="twissp-initial-conditions">
 <span id="twissp----initial-conditions"></span><h3>TwissP –&gt; initial conditions<a class="headerlink" href="#twissp-initial-conditions" title="Link to this heading">¶</a></h3>
 <ul class="simple">
+<li><p>Note (Bmad): the group becomes <code class="docutils literal notranslate"><span class="pre">beginning[...]</span></code> settings, which PALS and Bmad
+name alike bar the coupling matrix’s underscore (<code class="docutils literal notranslate"><span class="pre">cmat11</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">cmat_11</span></code>) and
+the derivatives, where Bmad puts <code class="docutils literal notranslate"><span class="pre">dpz</span></code> or <code class="docutils literal notranslate"><span class="pre">ds</span></code> before the plane or mode
+(<code class="docutils literal notranslate"><span class="pre">dbeta_a_dpz</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">dbeta_dpz_a</span></code>, <code class="docutils literal notranslate"><span class="pre">deta_x_ds</span></code> –&gt; <code class="docutils literal notranslate"><span class="pre">deta_ds_x</span></code>).</p></li>
 <li><p>Note (MAD-X): the group becomes a <code class="docutils literal notranslate"><span class="pre">BETA0</span></code> block. beta_a –&gt; betx,
 beta_b –&gt; bety, alpha_a –&gt; alfx, alpha_b –&gt; alfy, phi_a –&gt; <code class="docutils literal notranslate"><span class="pre">mux</span> <span class="pre">=</span> <span class="pre">phi_a/2pi</span></code>
 (MAD-X counts the phase in turns), eta_x –&gt; <code class="docutils literal notranslate"><span class="pre">dx</span> <span class="pre">=</span> <span class="pre">eta_x</span> <span class="pre">/</span> <span class="pre">beam-&gt;beta</span></code>, and
