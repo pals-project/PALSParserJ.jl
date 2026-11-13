@@ -745,11 +745,12 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
       @test occursin("particle_start[spin_x] = 1", out)
 
       # TwissP → the beginning element. Bmad and PALS agree on these names except for the
-      # coupling matrix, where Bmad has an underscore.
+      # coupling matrix, where Bmad has an underscore, and the derivatives, where Bmad
+      # puts dpz or ds before the plane or mode.
       @test occursin("beginning[beta_a] = 10", out)
       @test occursin("beginning[alpha_a] = 0.5", out)
       @test occursin("beginning[cmat_11] = 0.1", out)
-      @test occursin("beginning[deta_x_ds] = 0.2", out)
+      @test occursin("beginning[deta_ds_x] = 0.2", out)
 
       # Ordinary element definitions.
       @test occursin("d1: Drift", out)
@@ -773,7 +774,7 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
     end
   end
 
-  @testset "Bmad puts dpz first in the initial chromatic Twiss names" begin
+  @testset "Bmad puts dpz or ds first in the initial Twiss derivative names" begin
     for (pals_name, bmad_name) in [("dbeta_a_dpz",  "dbeta_dpz_a"),
                                    ("dbeta_b_dpz",  "dbeta_dpz_b"),
                                    ("dalpha_a_dpz", "dalpha_dpz_a"),
@@ -781,7 +782,9 @@ _scibmad_text(dir, lat) = _written(write_scibmad_file, dir, lat, "jl")
                                    ("deta_x_dpz",   "deta_dpz_x"),
                                    ("deta_y_dpz",   "deta_dpz_y"),
                                    ("detap_x_dpz",  "detap_dpz_x"),
-                                   ("detap_y_dpz",  "detap_dpz_y")]
+                                   ("detap_y_dpz",  "detap_dpz_y"),
+                                   ("deta_x_ds",    "deta_ds_x"),
+                                   ("deta_y_ds",    "deta_ds_y")]
       mktempdir() do dir
         fixture = replace(_TRANSLATE_FIXTURE, "beta_a: 10" => "$pals_name: 1.25")
         out = _bmad_text(dir, pals_to_bmad(_parsed(dir, fixture)))

@@ -357,11 +357,11 @@ function _ele_to_bmad_str(ele::YAMLNode)
       twissP = props["TwissP"]
       for k in keys(twissP)
         # PALS and Bmad give these the same names, bar the coupling matrix's underscore and
-        # the chromatic derivatives, where Bmad puts dpz before the plane or mode
-        # (PALS `dbeta_a_dpz` is Bmad `dbeta_dpz_a`).
+        # the derivatives, where Bmad puts dpz or ds before the plane or mode (PALS
+        # `dbeta_a_dpz` is Bmad `dbeta_dpz_a`, and `deta_x_ds` is `deta_ds_x`).
         attribute = startswith(k, "cmat") ? "cmat_" * k[5:end] : k
         attribute = replace(attribute,
-                            r"^(dbeta|dalpha|deta|detap)_([abxy])_dpz$" => s"\1_dpz_\2")
+                            r"^(dbeta|dalpha|deta|detap)_([abxy])_(dpz|ds)$" => s"\1_\3_\2")
         push!(beginning, "beginning[$attribute] = $(String(twissP[k]))")
       end
     elseif key == "ReferenceP"
