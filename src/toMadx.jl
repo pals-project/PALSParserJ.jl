@@ -1142,42 +1142,6 @@ end
 
 #---------------------------------------------------------------------------------------------------
 """
-    _madx_fold(text::AbstractString, f, args::AbstractString...)
-
-Return `text`, or the number it comes to when every one of `args` is a number.
-
-A PALS parameter may be written as an expression, which only MAD-X can evaluate, or as a plain
-number, which the translation can work with. Where a MAD-X value has to be derived from several
-PALS ones, `text` is that derivation written as a MAD-X expression and `f` is the same
-derivation as a function, applied here when all of its inputs parse.
-"""
-function _madx_fold(text::AbstractString, f, args::AbstractString...)
-  values = [tryparse(Float64, strip(a)) for a in args]
-  any(isnothing, values) && return String(text)
-  result = f(values...)
-  return isfinite(result) ? string(result) : String(text)
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _madx_times(a::AbstractString, b::AbstractString)
-
-Return the product of two MAD-X values, without the clutter of a factor of one.
-
-Two numbers are multiplied out here; a unit factor -- which is what an element of unit length
-gives, and what several of the bend derivations reduce to -- comes back as the other operand
-alone rather than as a product with nothing in it.
-"""
-function _madx_times(a::AbstractString, b::AbstractString)
-  va, vb = tryparse(Float64, strip(a)), tryparse(Float64, strip(b))
-  va !== nothing && vb !== nothing && return string(va * vb)
-  va == 1 && return String(b)
-  vb == 1 && return String(a)
-  return "($a) * ($b)"
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
     _madx_bend_geometry(props::YAMLNode, name::String)
 
 Return the reference geometry of a `Bend` as `(angle, angle_value, arc_length)`, or `nothing`
@@ -1201,7 +1165,7 @@ function _madx_bend_geometry(props::YAMLNode, name::String)
 
   # The curvature, however the PALS file chose to state it.
   g = haskey(bendP, "g_ref")      ? String(bendP["g_ref"]) :
-      haskey(bendP, "radius_ref") ? _madx_fold("1 / ($(String(bendP["radius_ref"])))",
+      haskey(bendP, "radius_ref") ? _fold("1 / ($(String(bendP["radius_ref"])))",
                                                r -> 1 / r, String(bendP["radius_ref"])) :
       haskey(bendP, "Bn0_ref")    ? "$(String(bendP["Bn0_ref"])) / $_MADX_RIGIDITY" : nothing
 
@@ -1217,22 +1181,22 @@ function _madx_bend_geometry(props::YAMLNode, name::String)
   # The angle and the arc length, from whichever pair of the three sets was given.
   if angle === nothing && g !== nothing && len !== nothing
     if len_kind == :arc
-      angle = _madx_times(g, len)
+      angle = _times(g, len)
     elseif len_kind == :chord
-      angle = _madx_fold("2 * asin(($g) * ($len) / 2)", (a, b) -> 2asin(a * b / 2), g, len)
+      angle = _fold("2 * asin(($g) * ($len) / 2)", (a, b) -> 2asin(a * b / 2), g, len)
     else
-      angle = _madx_fold("asin(($g) * ($len))", (a, b) -> asin(a * b), g, len)
+      angle = _fold("asin(($g) * ($len))", (a, b) -> asin(a * b), g, len)
     end
   end
 
   if arc === nothing && angle !== nothing
     if len_kind == :chord
-      arc = _madx_fold("($angle) * ($len) / (2 * sin(($angle) / 2))",
+      arc = _fold("($angle) * ($len) / (2 * sin(($angle) / 2))",
                        (a, l) -> a * l / (2sin(a / 2)), angle, len)
     elseif len_kind == :rect
-      arc = _madx_fold("($angle) * ($len) / sin($angle)", (a, l) -> a * l / sin(a), angle, len)
+      arc = _fold("($angle) * ($len) / sin($angle)", (a, l) -> a * l / sin(a), angle, len)
     elseif g !== nothing
-      arc = _madx_fold("($angle) / ($g)", (a, b) -> a / b, angle, g)
+      arc = _fold("($angle) / ($g)", (a, b) -> a / b, angle, g)
     end
   end
 
@@ -1280,7 +1244,7 @@ function _madx_bend_faces(bendP::YAMLNode, name::String, angle)
       angle === nothing &&
           error("$name: $rect is measured against the bend angle, which is not given")
       share == 0 && (push!(attrs, "$face = $(String(bendP[rect]))"); continue)
-      push!(attrs, "$face = " * _madx_fold("$(String(bendP[rect])) + $share * ($angle)",
+      push!(attrs, "$face = " * _fold("$(String(bendP[rect])) + $share * ($angle)",
                                            (r, a) -> r + share * a, String(bendP[rect]), angle))
     end
   end
@@ -1740,7 +1704,7 @@ function _madx_control_target(cname::String, param::String, facility::YAMLNode,
     kind_wanted, slave = String(qualifier[1]), String(qualifier[2])
   end
 
-  occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", slave) ||
+  occursin(_NAME_RE, slave) ||
       error("controller $cname: `$param` selects slaves by pattern, which MAD-X cannot express")
 
   props = _facility_props(facility, slave)
@@ -1751,7 +1715,7 @@ function _madx_control_target(cname::String, param::String, facility::YAMLNode,
 
   # A controller may drive another controller's variable, under whatever MAD-X calls it.
   if ele_kind == "Controller"
-    occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", path) ||
+    occursin(_NAME_RE, path) ||
         error("controller $cname: `$param` is not a variable of controller $slave")
     haskey(varmap, (slave, path)) ||
         error("controller $cname: `$param` names no variable of controller $slave")
@@ -1760,7 +1724,7 @@ function _madx_control_target(cname::String, param::String, facility::YAMLNode,
 
   path == "length" && return "$slave->l", 1.0, false
 
-  m = match(r"^MagneticMultipoleP\.([KB])([ns])([0-9]+)(L?)$", path)
+  m = match(_MULTIPOLE_RE, path)
   if m !== nothing
     order      = parse(Int, m[3])
     skew       = m[2] == "s"

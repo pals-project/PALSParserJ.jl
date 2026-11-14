@@ -44,6 +44,7 @@ end
 
 include("structs.jl")
 include("parser_wrapper.jl")
+include("common.jl")
 include("toBmad.jl")
 include("toMadx.jl")
 include("toSciBmad.jl")

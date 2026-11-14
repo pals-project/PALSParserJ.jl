@@ -17,9 +17,11 @@ lat = pj.parse_and_expand_pals(ex_file)
 
 # ── combined keeps the source text; the evaluated number is downstream of it ──
 # Constants and variables are not part of the lattice, so they are `adjunct`.
-consts_c = lat.combined["PALS"]["facility"][1]["constants"]
-consts_e = lat.adjunct["PALS"]["facility"][1]["constants"]
-vars_e   = lat.adjunct["PALS"]["facility"][2]["variables"]
+# Both lists are written in PALS' list form -- a sequence of single-key maps --
+# so the entry holding a given name is indexed out of the sequence first.
+consts_c = lat.combined["PALS"]["facility"][1]["constants"][1]
+consts_e = lat.adjunct["PALS"]["facility"][1]["constants"][1]
+vars_e   = lat.adjunct["PALS"]["facility"][2]["variables"][1]
 
 println("a_const  as written : ", String(consts_c["a_const"]))   # 0.3 * r_electron
 println("a_const  evaluated  : ", String(consts_e["a_const"]))   # a number

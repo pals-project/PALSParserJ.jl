@@ -397,7 +397,7 @@ function _scibmad_control_target(cname::String, param::String, facility::YAMLNod
         error("controller $cname: `$param` asks for a $kind_wanted but $slave is a $ele_kind")
   end
 
-  occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", slave) ||
+  occursin(_NAME_RE, slave) ||
       error("controller $cname: `$param` selects slaves by pattern, which a SciBmad Controller cannot express")
 
   # `length` is the one PALS element parameter that is not in a group, and the one whose
@@ -405,7 +405,7 @@ function _scibmad_control_target(cname::String, param::String, facility::YAMLNod
   path == "length" && return slave, "L"
 
   property = String(last(split(path, ".")))
-  occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", property) ||
+  occursin(_NAME_RE, property) ||
       error("controller $cname: `$param` does not name a single parameter")
   return slave, property
 end
