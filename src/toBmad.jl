@@ -431,56 +431,6 @@ end
 
 #---------------------------------------------------------------------------------------------------
 """
-    _name_value_pairs(node::YAMLNode)
-
-Return a PALS name/value list as `name => value-text` pairs, in definition order.
-
-Accepts both forms the standard allows for such a list: a map (`vv: 0.3`) and a sequence of
-single-key maps (`- vv: 0.3`). An entry written with no value takes PALS' default of zero, and
-one whose value is a structure rather than a single value is skipped.
-"""
-function _name_value_pairs(node::YAMLNode)
-  pairs = Pair{String,String}[]
-  function add!(child)
-    (is_map(child) || is_sequence(child)) && return
-    push!(pairs, node_key(child) => _value_text(child))
-  end
-  if is_map(node)
-    for key in keys(node)
-      add!(node[key])
-    end
-  elseif is_sequence(node)
-    for entry in node, i in eachindex(entry)
-      add!(entry[i])
-    end
-  end
-  return pairs
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _value_text(node::YAMLNode)
-
-Return the text of a value `node`, with a value left unwritten taken as PALS' default of zero.
-"""
-function _value_text(node::YAMLNode)
-  text = strip(String(node))
-  return text in ("", "~", "null") ? "0" : String(text)
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _ctrl_variables(props::YAMLNode)
-
-Return a controller's `variables` as `name => value-text` pairs, in definition order.
-"""
-function _ctrl_variables(props::YAMLNode)
-  haskey(props, "variables") || return Pair{String,String}[]
-  return _name_value_pairs(props["variables"])
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
     _bmad_constants(node::YAMLNode)
 
 Translate a compact-form `constants:`/`variables:` list into Bmad `name = value` definitions.
@@ -508,32 +458,6 @@ function _bmad_constant(props::YAMLNode, pals_kind::String)
   (is_map(value) || is_sequence(value)) &&
       error("$name: the `value` of a `$pals_kind` is not a single value")
   return "$name = $(_value_text(value))"
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _facility_entry(facility::YAMLNode, name::String)
-
-Return the `facility` entry named `name`, or `nothing` if there is none. The entry is the
-single-key map the translators take as an element; [`_facility_props`](@ref) gives its
-properties.
-"""
-function _facility_entry(facility::YAMLNode, name::String)
-  for ele in facility
-    node_key(ele[1]) == name && return ele
-  end
-  return nothing
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _facility_props(facility::YAMLNode, name::String)
-
-Return the property map of the `facility` entry named `name`, or `nothing` if there is none.
-"""
-function _facility_props(facility::YAMLNode, name::String)
-  ele = _facility_entry(facility, name)
-  return ele === nothing ? nothing : ele[1]
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -583,7 +507,7 @@ function _bmad_control_target(cname::String, param::String, facility::YAMLNode)
     kind_wanted, slave = String(qualifier[1]), String(qualifier[2])
   end
 
-  occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", slave) ||
+  occursin(_NAME_RE, slave) ||
       error("controller $cname: `$param` selects slaves by pattern, which a Bmad overlay cannot express")
 
   props = _facility_props(facility, slave)
@@ -596,14 +520,14 @@ function _bmad_control_target(cname::String, param::String, facility::YAMLNode)
 
   # A controller may drive another controller's variable, and so may a Bmad overlay.
   if haskey(props, "kind") && String(props["kind"]) == "Controller"
-    occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", path) ||
+    occursin(_NAME_RE, path) ||
         error("controller $cname: `$param` is not a variable of controller $slave")
     return "$slave[$path]", 1.0, 0.0
   end
 
   path == "length" && return "$slave[L]", 1.0, 0.0
 
-  m = match(r"^MagneticMultipoleP\.([KB])([ns])([0-9]+)(L?)$", path)
+  m = match(_MULTIPOLE_RE, path)
   if m !== nothing
     order      = parse(Int, m[3])
     skew       = m[2] == "s"
@@ -673,7 +597,7 @@ function _multipole_drives(facility::YAMLNode)
     for control in props["controls"]
       haskey(control, "parameter") || continue
       param = String(control["parameter"])
-      m = match(r"^MagneticMultipoleP\.([KB])([ns])([0-9]+)(L?)$", last(split(param, ">")))
+      m = match(_MULTIPOLE_RE, last(split(param, ">")))
       m === nothing && continue
       target, _, _ = _bmad_control_target(cname, param, facility)
       slave, attribute = split(chop(target), "[")
@@ -798,91 +722,6 @@ function _bmad_kind(ele_kind::String)
     error("Element kind $ele_kind is not translated to Bmad")
   end
 end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    MultipoleRepresentation
-
-Abstract supertype for the multipole representations used during PALS-to-Bmad translation.
-
-Concrete subtypes are [`FullRepresentation`](@ref) (the raw, over-parametrized form read
-from PALS-YAML) and [`ABRepresentation`](@ref) (the element-specific A/B field integrals).
-"""
-abstract type MultipoleRepresentation end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    FullRepresentation <: MultipoleRepresentation
-
-Raw, over-parametrized multipole form filled directly from PALS-YAML.
-
-Holds, keyed by multipole order, whether each coefficient is `normalized` (K vs. B) and
-`integrated` (field integral vs. field strength), its `magnitude` (normal/skew pair), and its
-`tilt`, together with the element length `L`. It is down-converted to whichever
-element-specific representation the element kind requires.
-
-    FullRepresentation()
-
-Construct an empty representation with unit length `L`.
-"""
-mutable struct FullRepresentation <: MultipoleRepresentation
-  normalized::Dict{Int,Bool}
-  integrated::Dict{Int,Bool}
-  magnitude ::Dict{Int,Vector{Float64}}
-  tilt      ::Dict{Int,Float64}
-  L         ::Float64
-end
-FullRepresentation() = FullRepresentation(Dict(), Dict(), Dict(), Dict(), 1.0)
-FullRepresentation(full::FullRepresentation) = full   # identity down-convert
-
-#---------------------------------------------------------------------------------------------------
-"""
-    ABRepresentation <: MultipoleRepresentation
-
-Element-specific multipole form: only the final A/B field integrals.
-
-`A` and `B` map each multipole order to its skew and normal field integral, respectively.
-Built from a [`FullRepresentation`](@ref) via [`ABRepresentation(::FullRepresentation)`](@ref).
-"""
-struct ABRepresentation <: MultipoleRepresentation
-  A::Dict{Int,Float64}
-  B::Dict{Int,Float64}
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    ABRepresentation(full::FullRepresentation)
-
-Down-convert a `FullRepresentation` to A/B field integrals.
-
-Combine each multipole's magnitude, length, and tilt into complex field integrals and store
-their imaginary/real parts as the `A`/`B` coefficient dictionaries.
-"""
-function ABRepresentation(full::FullRepresentation)
-  A = Dict{Int,Float64}()
-  B = Dict{Int,Float64}()
-  for mp in keys(full.magnitude)
-    L    = full.integrated[mp] ? 1.0 : full.L
-    t_n  = haskey(full.tilt, mp) ? full.tilt[mp] : 0.0
-    fact = mp <= 20 ? 1 / factorial(mp) : 1 / factorial(big(mp))
-    b_ia = fact * L * first([1 1im] * full.magnitude[mp]) * _tilt_rotation(mp, t_n)
-    A[mp] = imag(b_ia)
-    B[mp] = real(b_ia)
-  end
-  return ABRepresentation(A, B)
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _tilt_rotation(order::Int, tilt::Real)
-
-Return the factor that rotates an `order` multipole of the given `tilt` into normal and skew
-parts.
-
-A tilt of `T` rotates an order-`N` field by `(N+1) * T` in the normal/skew plane: both PALS and
-Bmad write the field as `(1/N!) (normal + i * skew) exp(-i (N+1) T)`.
-"""
-_tilt_rotation(order::Int, tilt::Real) = exp(-1im * (order + 1) * tilt)
 
 #---------------------------------------------------------------------------------------------------
 """
@@ -1048,34 +887,6 @@ function _has_skew(props::YAMLNode, order::Int)
     haskey(mmP, key) && !(Float64(mmP[key]) ≈ 0) && return true
   end
   return false
-end
-
-#---------------------------------------------------------------------------------------------------
-"""
-    _fill_multipoles!(full::FullRepresentation, mmP, name)
-
-Populate `full` from a PALS `MagneticMultipoleP` map.
-
-Parse each key of `mmP` into a multipole order and store its magnitude, `normalized`,
-`integrated`, and `tilt` attributes in `full`; `name` is used in error messages. Return `full`.
-"""
-function _fill_multipoles!(full::FullRepresentation, mmP, name)
-  for mmkey in keys(mmP)
-    order = parse(Int, filter(isdigit, mmkey))
-    if startswith(mmkey, "tilt")
-      haskey(full.tilt, order) && error("$name conflicting multipole definitions $mmkey")
-      full.tilt[order] = Float64(mmP[mmkey])
-    else
-      ns = mmkey[2] == 'n' ? 1 : 2
-      if !haskey(full.magnitude, order)
-        full.integrated[order] = (mmkey[end] == 'L')
-        full.normalized[order] = (mmkey[1] == 'K')
-        full.magnitude[order]  = zeros(Float64, 2)
-      end
-      full.magnitude[order][ns] = Float64(mmP[mmkey])
-    end
-  end
-  return full
 end
 
 #---------------------------------------------------------------------------------------------------
@@ -1467,7 +1278,7 @@ function _make_bmad_ele(ele::YAMLNode; beginning_at_origin::Bool = true,
           L = haskey(rfP, "L_active") ? String(rfP["L_active"]) :
               haskey(props, "length") ? String(props["length"]) :
               error("$(node_key(props)): `gradient` needs a length to become the voltage Bmad states")
-          tmp *= "voltage = $(_madx_times(String(rfP["gradient"]), L)),"
+          tmp *= "voltage = $(_times(String(rfP["gradient"]), L)),"
 
         # PALS states RF phases in radians, Bmad in turns.
         elseif rfkey == "phase"
@@ -1697,7 +1508,7 @@ function _bmad_origin(props::YAMLNode, name::String, bmad_kind::String,
               "beginning element is not at it")
     return ["origin_ele = beginning", "origin_ele_ref_pt = exit_end"]
   end
-  occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", origin) ||
+  occursin(_NAME_RE, origin) ||
       error("$name: origin_ele `$origin` is not a single element name, which Bmad needs")
   return ["origin_ele = $origin", "origin_ele_ref_pt = $(lowercase(ref_pt))"]
 end
@@ -1740,7 +1551,7 @@ Bmad takes either a list of element names or a single `start:end` range, so the 
 be one of those two: plain names joined by `,`, or one range between two plain names.
 """
 function _bmad_girder_slaves(spec::String, name::String)
-  plain(s) = occursin(r"^[A-Za-z_][A-Za-z0-9_]*$", s)
+  plain(s) = occursin(_NAME_RE, s)
   terms = strip.(split(spec, ","))
   if length(terms) == 1 && count(==(':'), terms[1]) == 1
     a, b = strip.(split(terms[1], ":"))
@@ -1836,17 +1647,17 @@ function _bmad_bend_angle(props::YAMLNode, name::String)
   bendP = props["BendP"]
   haskey(bendP, "angle_ref") && return String(bendP["angle_ref"])
   g = haskey(bendP, "g_ref")      ? String(bendP["g_ref"]) :
-      haskey(bendP, "radius_ref") ? _madx_fold("1 / ($(String(bendP["radius_ref"])))",
+      haskey(bendP, "radius_ref") ? _fold("1 / ($(String(bendP["radius_ref"])))",
                                                r -> 1 / r, String(bendP["radius_ref"])) : nothing
   g === nothing && return nothing
   if haskey(props, "length")
-    return _madx_times(g, String(props["length"]))
+    return _times(g, String(props["length"]))
   elseif haskey(bendP, "L_chord")
     len = String(bendP["L_chord"])
-    return _madx_fold("2 * asin(($g) * ($len) / 2)", (a, b) -> 2asin(a * b / 2), g, len)
+    return _fold("2 * asin(($g) * ($len) / 2)", (a, b) -> 2asin(a * b / 2), g, len)
   elseif haskey(bendP, "L_rectangle")
     len = String(bendP["L_rectangle"])
-    return _madx_fold("asin(($g) * ($len))", (a, b) -> asin(a * b), g, len)
+    return _fold("asin(($g) * ($len))", (a, b) -> asin(a * b), g, len)
   end
   return nothing
 end
@@ -1884,5 +1695,5 @@ function _bmad_bend_face(props::YAMLNode, key::String, name::String)
   angle = _bmad_bend_angle(props, name)
   angle === nothing &&
       error("$name: $key is measured against the bend angle, which is not given")
-  return "$face = " * _madx_fold("$rect + $share * ($angle)", (r, a) -> r + share * a, rect, angle)
+  return "$face = " * _fold("$rect + $share * ($angle)", (r, a) -> r + share * a, rect, angle)
 end
