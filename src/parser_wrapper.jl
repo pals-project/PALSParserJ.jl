@@ -141,9 +141,11 @@ The five tree views are:
 Every mathematical expression is evaluated to a number across the expanded views
 and `adjunct` (see [`evaluate_pals_expression`](@ref);
 `random()`/`random_gauss()` are left as text). `Controller` elements are
-evaluated against their own scoped variable tables, with each control
-`expression` computed and stored back in its control entry; controllers are
-facility-level, so they are found in `adjunct`.
+evaluated against their own scoped variable tables. Their `variables` are
+replaced by their values, while each control keeps its `expression` as written,
+with the number it evaluates to beside it as `value` (none when the expression
+is deferred or cannot be evaluated). Controllers are facility-level, so they are
+found in `adjunct`.
 
 Each view is backed by its own `YAMLNode`; all five are freed independently
 when their nodes are garbage collected.

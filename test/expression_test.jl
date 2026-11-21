@@ -280,19 +280,24 @@ PALS:
       # user constants, never a variable (rejecting a variable reference is
       # PALSParserCpp's business and is tested there).
       @test Float64(ps27["variables"]["cur2"]) ≈ cur2
-      # Each control expression is computed and stored back in the entry.
-      @test Float64(ps27["controls"][1]["expression"]) ≈ 0.075*sin(cur1) + 0.3*cur2
+      # Each control keeps its expression as written, with the number it
+      # evaluates to beside it as `value`.
+      @test String(ps27["controls"][1]["expression"]) == "0.075*sin(cur1) + 0.3*cur2"
+      @test Float64(ps27["controls"][1]["value"]) ≈ 0.075*sin(cur1) + 0.3*cur2
       # Control expressions may reference lattice constants (my_const = 2).
-      @test Float64(ps27["controls"][2]["expression"]) ≈ cur1 * 2.0
-      # random_gauss() stays deferred.
+      @test String(ps27["controls"][2]["expression"]) == "cur1 * my_const"
+      @test Float64(ps27["controls"][2]["value"]) ≈ cur1 * 2.0
+      # random_gauss() stays deferred, so that control has no value.
       @test String(ps27["controls"][3]["expression"]) == "0.01 + random_gauss()"
+      @test !haskey(ps27["controls"][3], "value")
       # The parameter target spec is a name, left untouched.
       @test String(ps27["controls"][1]["parameter"]) == "Qa.*>MagneticMultipoleP.Ks2L"
 
       # A second controller, with a symbol table of its own.
       chrom = fac[3]["chrom_a"]
       @test Float64(chrom["variables"]["derived"]) ≈ 0.8
-      @test Float64(chrom["controls"][1]["expression"]) ≈ 5.62*0.4 + 0.02*0.4^2
+      @test String(chrom["controls"][1]["expression"]) == "5.62 * command + 0.02 * command^2"
+      @test Float64(chrom["controls"][1]["value"]) ≈ 5.62*0.4 + 0.02*0.4^2
 
       # The combined tree keeps the original controller expression text.
       c_ps27 = lat.combined["PALS"]["facility"][2]["ps27"]
