@@ -7,7 +7,9 @@ a plain number — across the expanded views (**`expanded`** and
 **`full_expanded`**, which hold the same values) and **`adjunct`** — so the
 expanded lattice is fully numeric and ready for a simulation program to consume.
 The `original` and `combined` views always keep the expression text exactly as
-written.
+written. The one exception in `adjunct` is a controller's control expression,
+which keeps its text and gets its number beside it (see
+[Controllers](#controllers)).
 
 ```julia
 import PALSParserJ as pj
@@ -168,10 +170,12 @@ reference, one that cannot be resolved leaves the value as text.
 A `Controller` element bundles expressions that drive lattice parameters. Its
 `variables:` form a symbol table *scoped to that controller*, and each
 `controls:` entry pairs a `parameter` target with an `expression`. During
-expansion the controller variables are evaluated against that scoped table, and
-each control `expression` is computed and written back into its control entry.
-Controller variables may reference one another and, via the
-`controller>variable` syntax, variables of another controller:
+expansion the controller variables are evaluated against that scoped table and
+replaced by their values. Each control keeps its `expression` as written, so the
+controller still says how it depends on its variables, and the number that
+expression evaluates to is added beside it as `value`. Controller variables may
+reference one another and, via the `controller>variable` syntax, variables of
+another controller. As written:
 
 ```yaml
 - ps27:
@@ -182,11 +186,31 @@ Controller variables may reference one another and, via the
       cur2: cur1 / c_light      # references an earlier controller variable
     controls:
       - parameter: Qa.*>MagneticMultipoleP.Ks2L
-        expression: 0.075*sin(cur1) + 0.3*cur2   # → a number in `expanded`
+        expression: 0.075*sin(cur1) + 0.3*cur2
+      - parameter: Qc>MagneticMultipoleP.Kn0
+        expression: 0.01 + random_gauss()
 ```
 
-The `parameter` target specification and `control_type` are names, not
-expressions, and are left untouched.
+and in `adjunct`, where controllers end up after expansion:
+
+```yaml
+- ps27:
+    kind: Controller
+    control_type: ABSOLUTE
+    variables:
+      cur1: 0.023
+      cur2: 7.671974189557498e-11
+    controls:
+      - parameter: Qa.*>MagneticMultipoleP.Ks2L
+        expression: 0.075*sin(cur1) + 0.3*cur2   # kept as written
+        value: 0.001724847939538586              # what it evaluates to
+      - parameter: Qc>MagneticMultipoleP.Kn0
+        expression: 0.01 + random_gauss()        # deferred: no value
+```
+
+A control whose expression is deferred, like the `random_gauss()` one here, or
+cannot be evaluated gets no `value`. The `parameter` target specification and
+`control_type` are names, not expressions, and are left untouched.
 
 ## Evaluating a single expression
 
