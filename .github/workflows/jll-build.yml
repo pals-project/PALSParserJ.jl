@@ -1,0 +1,81 @@
+name: Build and test PALSParserCpp JLL artifacts
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pals-jll-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - name: Instantiate pinned builder
+        run: julia --project=contrib/jll -e 'using Pkg; Pkg.instantiate()'
+      - name: Build and audit four native targets
+        working-directory: contrib/jll
+        env:
+          BINARYBUILDER_AUTOMATIC_APPLE: 'true'
+        run: |
+          julia --project=. build_tarballs.jl --verbose --deploy=local \
+            x86_64-linux-gnu-cxx11,aarch64-apple-darwin,x86_64-apple-darwin,x86_64-w64-mingw32-cxx11
+      - name: Collect generated JLL wrapper
+        run: julia -e 'cp(joinpath(homedir(), ".julia", "dev", "PALSParserCpp_jll"), joinpath(ENV["RUNNER_TEMP"], "generated-jll"))'
+      - name: Package complete corresponding source
+        run: python3 contrib/jll/source_bundle.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-products
+          path: contrib/jll/products/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: generated-wrapper
+          path: ${{ runner.temp }}/generated-jll/
+          if-no-files-found: error
+
+  smoke:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            julia: '1.10'
+          - os: macos-15
+            julia: '1.12'
+          - os: macos-15-intel
+            julia: '1.12'
+          - os: windows-latest
+            julia: '1.12'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.julia }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: binary-products
+          path: products
+      - uses: actions/download-artifact@v4
+        with:
+          name: generated-wrapper
+          path: generated-jll
+      - name: Verify artifact hash, import the JLL, and exercise the C API
+        env:
+          JLL_RECIPE: PALSParserCpp
+        run: julia contrib/jll/smoke_tarball.jl products generated-jll
+      - name: Test PALSParserJ against the locally generated JLL
+        run: julia --project=. -e 'using Pkg; Pkg.develop(path="generated-jll"); Pkg.instantiate(); Pkg.test()' 

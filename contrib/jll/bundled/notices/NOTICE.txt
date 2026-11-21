@@ -1,0 +1,18 @@
+PALSParserCpp binary packaging notice
+
+This artifact packages PALSParserCpp from pals-project/PALSParserCpp, together
+with its pinned native dependencies. Upstream PALSParserCpp does not currently
+declare a distribution license. This packaging does not modify that upstream
+repository or claim that it has adopted a particular license. The package was
+prepared and published at the request of eiad-hamwi.
+
+AtomicAndPhysicalConstantsCLib is distributed with GNU GPL version 2 license
+text, reproduced as APC-LICENSE. Its obligations apply to distribution of the
+linked program. rapidyaml and c4core notices are supplied separately, as are the
+PCRE2 license and attribution files. The generated Julia JLL wrapper has its own
+license, distinct from the native source and dependencies.
+
+The accompanying corresponding-source archive contains the pinned source,
+submodules, packaging patch, this notice, and build scripts. No statement about
+copyright ownership or institutional authorization is inferred from funding or
+employment affiliations.
