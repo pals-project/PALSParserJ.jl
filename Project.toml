@@ -1,12 +1,14 @@
 name = "PALSParserJ"
 uuid = "3ffa0026-5f68-41f0-beae-2f2b11b650a3"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["David Sagan <david.sagan@gmail.com>", "Alex He <adh236@cornell.edu>"]
 
 [deps]
+PALSParserCpp_jll = "abf197fe-9414-589a-856b-7f7f8c52d4af"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [compat]
+PALSParserCpp_jll = "=0.1.0"
 Beamlines = "0.11"
 julia = "1.10"
 

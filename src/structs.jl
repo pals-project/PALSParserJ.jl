@@ -7,53 +7,35 @@ using Libdl
 # a forced recompile.
 const LIBPARSER = Ref{String}("")
 
-# Every place the library might be. The library is built by PALSParserCpp and is
-# not shipped with this package, so it has to be searched for. In order:
-#   1. $PALS_PARSER_CPP_LIB — full path to the shared library itself
-#   2. $PALS_PARSER_CPP_DIR — a PALSParserCpp checkout; its build directory is
-#      searched
-#   3. a PALSParserCpp checkout beside this one (the layout the installation
-#      guide describes)
+# Explicit overrides are for local development. Never search a sibling build/
+# implicitly: it may be a stale binary or have the wrong CPU architecture.
 function _libparser_candidates()
-  # dlext is "dylib" on macOS, "so" on Linux, "dll" on Windows. MSVC drops the
-  # "lib" prefix and writes into a per-configuration subdirectory; the
-  # single-config generators used elsewhere write straight into build/.
-  names = ("libPALSParserCpp.$(Libdl.dlext)", "PALSParserCpp.$(Libdl.dlext)")
-  subdirs = ("", "Release", "Debug")
-
-  out = String[]
-  haskey(ENV, "PALS_PARSER_CPP_LIB") && push!(out, ENV["PALS_PARSER_CPP_LIB"])
-
-  roots = String[]
-  haskey(ENV, "PALS_PARSER_CPP_DIR") && push!(roots, ENV["PALS_PARSER_CPP_DIR"])
-  push!(roots, normpath(joinpath(@__DIR__, "..", "..", "PALSParserCpp")))
-
-  for r in roots, s in subdirs, n in names
-    push!(out, normpath(joinpath(r, "build", s, n)))
+  if haskey(ENV, "PALS_PARSER_CPP_LIB")
+    return [abspath(ENV["PALS_PARSER_CPP_LIB"])]
   end
-  return out
+  roots = haskey(ENV, "PALS_PARSER_CPP_DIR") ? [ENV["PALS_PARSER_CPP_DIR"]] : String[]
+  names = ("libPALSParserCpp.$(Libdl.dlext)", "PALSParserCpp.$(Libdl.dlext)")
+  return [abspath(joinpath(r, "build", s, n))
+          for r in roots for s in ("", "Release", "Debug") for n in names]
 end
 
-# Locate the library, or explain exactly what was looked for and how to fix it.
+# Import lazily so an explicit developer override can be used without loading
+# a second copy of the native library from the artifact. Resolve the global in
+# the newest world after the first import (Julia 1.12+ tracks global bindings).
+function _jll_libparser_path()
+  @eval import PALSParserCpp_jll
+  return Base.invokelatest(() -> PALSParserCpp_jll.libPALSParserCpp_path)
+end
+
 function _find_libparser()
   candidates = _libparser_candidates()
-  for c in candidates
-    isfile(c) && return c
+  if !isempty(candidates)
+    for path in candidates
+      isfile(path) && return path
+    end
+    error("Explicit PALS parser override does not exist. Searched:\n" * join(candidates, "\n"))
   end
-  error("""
-        PALSParserJ could not find the PALSParserCpp shared library \
-        (libPALSParserCpp.$(Libdl.dlext)).
-
-        Build it from a PALSParserCpp checkout:
-            cmake -S . -B build && cmake --build build
-
-        Then either clone PALSParserCpp next to PALSParserJ, or point \
-        PALSParserJ at it:
-            ENV["PALS_PARSER_CPP_DIR"] = "/path/to/PALSParserCpp"
-            ENV["PALS_PARSER_CPP_LIB"] = "/path/to/libPALSParserCpp.$(Libdl.dlext)"
-
-        Searched:
-        """ * join("  " .* candidates, "\n"))
+  return _jll_libparser_path()
 end
 
 """
@@ -63,10 +45,9 @@ Absolute path to the PALSParserCpp shared library every `@ccall` here targets
 (through [`_csym`](@ref)), resolved on first use and cached thereafter. Throws a descriptive error listing
 every path tried if the library cannot be found.
 
-Resolution is deliberately lazy rather than done in `__init__`: `using
-PALSParserJ` must succeed without the C library present, so that documentation
-and other tooling can read the package without a C++ toolchain. The cost is that
-a missing library is reported at the first call rather than at load.
+Resolution is lazy. Normal installations load the platform-matched library from
+PALSParserCpp_jll. Explicit PALS_PARSER_CPP_LIB or PALS_PARSER_CPP_DIR overrides
+are available for native development and take precedence over the artifact.
 """
 function libparser()
   isempty(LIBPARSER[]) && (LIBPARSER[] = _find_libparser())

@@ -1,5 +1,7 @@
 using Test
 
+include("jll_loader_test.jl")
+
 include("yaml_test.jl")
 include("lattice_views_test.jl")
 include("correspondence_test.jl")
