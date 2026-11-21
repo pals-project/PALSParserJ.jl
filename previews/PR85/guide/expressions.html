@@ -258,7 +258,9 @@ a plain number — across the expanded views (<strong><code class="docutils lite
 <strong><code class="docutils literal notranslate"><span class="pre">full_expanded</span></code></strong>, which hold the same values) and <strong><code class="docutils literal notranslate"><span class="pre">adjunct</span></code></strong> — so the
 expanded lattice is fully numeric and ready for a simulation program to consume.
 The <code class="docutils literal notranslate"><span class="pre">original</span></code> and <code class="docutils literal notranslate"><span class="pre">combined</span></code> views always keep the expression text exactly as
-written.</p>
+written. The one exception in <code class="docutils literal notranslate"><span class="pre">adjunct</span></code> is a controller’s control expression,
+which keeps its text and gets its number beside it (see
+<a class="reference internal" href="#controllers">Controllers</a>).</p>
 <div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="n">PALSParserJ</span><span class="w"> </span><span class="n">as</span><span class="w"> </span><span class="n">pj</span>
 
 <span class="n">lat</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pj</span><span class="o">.</span><span class="n">parse_and_expand_pals</span><span class="p">(</span><span class="s">"ex.pals.yaml"</span><span class="p">)</span>
@@ -437,10 +439,12 @@ reference, one that cannot be resolved leaves the value as text.</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">Controller</span></code> element bundles expressions that drive lattice parameters. Its
 <code class="docutils literal notranslate"><span class="pre">variables:</span></code> form a symbol table <em>scoped to that controller</em>, and each
 <code class="docutils literal notranslate"><span class="pre">controls:</span></code> entry pairs a <code class="docutils literal notranslate"><span class="pre">parameter</span></code> target with an <code class="docutils literal notranslate"><span class="pre">expression</span></code>. During
-expansion the controller variables are evaluated against that scoped table, and
-each control <code class="docutils literal notranslate"><span class="pre">expression</span></code> is computed and written back into its control entry.
-Controller variables may reference one another and, via the
-<code class="docutils literal notranslate"><span class="pre">controller&gt;variable</span></code> syntax, variables of another controller:</p>
+expansion the controller variables are evaluated against that scoped table and
+replaced by their values. Each control keeps its <code class="docutils literal notranslate"><span class="pre">expression</span></code> as written, so the
+controller still says how it depends on its variables, and the number that
+expression evaluates to is added beside it as <code class="docutils literal notranslate"><span class="pre">value</span></code>. Controller variables may
+reference one another and, via the <code class="docutils literal notranslate"><span class="pre">controller&gt;variable</span></code> syntax, variables of
+another controller. As written:</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">ps27</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Controller</span>
 <span class="w">    </span><span class="nt">control_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ABSOLUTE</span>
@@ -449,11 +453,29 @@ Controller variables may reference one another and, via the
 <span class="w">      </span><span class="nt">cur2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cur1 / c_light</span><span class="w">      </span><span class="c1"># references an earlier controller variable</span>
 <span class="w">    </span><span class="nt">controls</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">parameter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Qa.*&gt;MagneticMultipoleP.Ks2L</span>
-<span class="w">        </span><span class="nt">expression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.075*sin(cur1) + 0.3*cur2</span><span class="w">   </span><span class="c1"># → a number in `expanded`</span>
+<span class="w">        </span><span class="nt">expression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.075*sin(cur1) + 0.3*cur2</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">parameter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Qc&gt;MagneticMultipoleP.Kn0</span>
+<span class="w">        </span><span class="nt">expression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.01 + random_gauss()</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">parameter</span></code> target specification and <code class="docutils literal notranslate"><span class="pre">control_type</span></code> are names, not
-expressions, and are left untouched.</p>
+<p>and in <code class="docutils literal notranslate"><span class="pre">adjunct</span></code>, where controllers end up after expansion:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">ps27</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Controller</span>
+<span class="w">    </span><span class="nt">control_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ABSOLUTE</span>
+<span class="w">    </span><span class="nt">variables</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">cur1</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.023</span>
+<span class="w">      </span><span class="nt">cur2</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">7.671974189557498e-11</span>
+<span class="w">    </span><span class="nt">controls</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">parameter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Qa.*&gt;MagneticMultipoleP.Ks2L</span>
+<span class="w">        </span><span class="nt">expression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.075*sin(cur1) + 0.3*cur2</span><span class="w">   </span><span class="c1"># kept as written</span>
+<span class="w">        </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.001724847939538586</span><span class="w">              </span><span class="c1"># what it evaluates to</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">parameter</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Qc&gt;MagneticMultipoleP.Kn0</span>
+<span class="w">        </span><span class="nt">expression</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.01 + random_gauss()</span><span class="w">        </span><span class="c1"># deferred: no value</span>
+</pre></div>
+</div>
+<p>A control whose expression is deferred, like the <code class="docutils literal notranslate"><span class="pre">random_gauss()</span></code> one here, or
+cannot be evaluated gets no <code class="docutils literal notranslate"><span class="pre">value</span></code>. The <code class="docutils literal notranslate"><span class="pre">parameter</span></code> target specification and
+<code class="docutils literal notranslate"><span class="pre">control_type</span></code> are names, not expressions, and are left untouched.</p>
 </section>
 <section id="evaluating-a-single-expression">
 <h2>Evaluating a single expression<a class="headerlink" href="#evaluating-a-single-expression" title="Link to this heading">¶</a></h2>
