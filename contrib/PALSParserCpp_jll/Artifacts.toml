@@ -1,0 +1,35 @@
+[[PALSParserCpp]]
+arch = "aarch64"
+git-tree-sha1 = "407f0deee29e216d076a2e18b3ef7eb73c340582"
+os = "macos"
+
+    [[PALSParserCpp.download]]
+    sha256 = "98e44f8c46a07cf5ddcf722f34b176666bf147e7bf250f675cb6a4843e47809c"
+    url = "https://raw.githubusercontent.com/pals-project/PALSParserJ.jl/4f33495d5c8d48e88131efb2411e6ca9a50686ee/contrib/jll/products/PALSParserCpp.v0.1.0.aarch64-apple-darwin.tar.gz"
+[[PALSParserCpp]]
+arch = "x86_64"
+git-tree-sha1 = "cc865de8d6cbb6c8870e045e77575516a07ae8ca"
+os = "macos"
+
+    [[PALSParserCpp.download]]
+    sha256 = "b8d207b190c839ddba12cd0d1a1e1feb315953caf42eab05cf3635ee2edac30b"
+    url = "https://raw.githubusercontent.com/pals-project/PALSParserJ.jl/4f33495d5c8d48e88131efb2411e6ca9a50686ee/contrib/jll/products/PALSParserCpp.v0.1.0.x86_64-apple-darwin.tar.gz"
+[[PALSParserCpp]]
+arch = "x86_64"
+cxxstring_abi = "cxx11"
+git-tree-sha1 = "5f747fa65709016be01c1ff9ebf2acef5525920d"
+libc = "glibc"
+os = "linux"
+
+    [[PALSParserCpp.download]]
+    sha256 = "7b240395a188d94ca3dd867ec5cbac729185935732c53f76a700410326f2abfc"
+    url = "https://raw.githubusercontent.com/pals-project/PALSParserJ.jl/4f33495d5c8d48e88131efb2411e6ca9a50686ee/contrib/jll/products/PALSParserCpp.v0.1.0.x86_64-linux-gnu-cxx11.tar.gz"
+[[PALSParserCpp]]
+arch = "x86_64"
+cxxstring_abi = "cxx11"
+git-tree-sha1 = "d2296755223c1569c371870f295f37ff2ca38b86"
+os = "windows"
+
+    [[PALSParserCpp.download]]
+    sha256 = "bc14f8f1e395e9ca1f764a3fd8ff1e6c0b3ae0c62b0c7f8e445bb2fbc9975bb3"
+    url = "https://raw.githubusercontent.com/pals-project/PALSParserJ.jl/4f33495d5c8d48e88131efb2411e6ca9a50686ee/contrib/jll/products/PALSParserCpp.v0.1.0.x86_64-w64-mingw32-cxx11.tar.gz"

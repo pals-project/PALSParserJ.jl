@@ -1,18 +1,29 @@
-# JLL packaging preparation
+# Bundled JLL packaging
 
-This branch contains PALSParserCpp JLL packaging within the PALSParserJ repository.
-No separate JLL repository or binary release is created by its workflows.
+The package includes the generated wrapper in `contrib/PALSParserCpp_jll` and
+four tested binary tarballs in `products`, copied without recompilation from
+[successful run 44931883659](https://github.com/pals-project/PALSParserJ.jl/actions/runs/44931883659).
+The wrapper pins download URLs to the binary commit and retains the original
+SHA-256 and artifact tree hashes. APC is bundled; no separate APC JLL is needed.
+`products/PALSParserCpp-corresponding-source.tar.gz` preserves corresponding source.
+Follow the root README to install with Julia's package manager; GitHub CLI and
+expiring workflow artifacts are not required.
+
+The regular test workflow tests the bundled wrapper on all four platforms.
+The separate, manually runnable `jll-build.yml` workflow remains available to
+rebuild and audit native binaries when native source changes. A new build does
+not silently replace the committed wrapper or tarballs; update them together
+after verifying the new build. No standalone JLL release is published here.
 
 The build recipe pins PALSParserCpp, rapidyaml, PCRE2 and APC source commits.
 GitHub Actions builds four native targets, preserves dependency notices, generates
 complete corresponding source, and imports the generated JLL on Linux, ARM/Intel
 macOS and Windows. Each smoke job then runs PALSParserJ's tests against that local
-JLL. The generated package and binaries are CI artifacts, not published releases.
+JLL. New build outputs remain CI artifacts until explicitly promoted into the repository.
 The wrapper's new JLL dependency is supplied by `Pkg.develop(path="generated-jll")`
 in CI, so no nonexistent public JLL release is needed to bootstrap the branch.
 
-Run the reusable workflow `.github/workflows/jll-build.yml` manually, or push
-changes to this branch to run it through `test.yaml`. Source and binary build
+Run the reusable workflow `.github/workflows/jll-build.yml` manually. Source and binary build
 products are uploaded as workflow artifacts for review. These are temporary CI
 artifacts subject to GitHub retention policies, not permanent distribution URLs.
 

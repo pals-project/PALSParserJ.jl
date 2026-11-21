@@ -32,49 +32,35 @@ platform-matched binaries of
 [PALSParserCpp](https://github.com/pals-project/PALSParserCpp). A separate C++
 checkout or compiler is not required when using the JLL binaries.
 
-**Packaging preview:** `PALSParserCpp_jll` is not yet registered or published as a
-release. Running `Pkg.instantiate()` alone on this branch therefore does not
-complete installation. For now, install the generated wrapper and binaries from
-a successful [JLL build workflow](https://github.com/pals-project/PALSParserJ.jl/actions/workflows/jll-build.yml)
-run, as CI does. These artifacts cover Linux x86_64 (glibc), macOS Apple Silicon
-and Intel, and Windows x86_64.
+### Install this branch
 
-### Install the CI artifacts
-
-The following commands use the [GitHub CLI](https://cli.github.com/) (`gh`),
-authenticated with `gh auth login`. Replace `RUN_ID` with the ID of a successful
-run that contains both `binary-products` and `generated-wrapper` artifacts.
-Artifacts expire according to GitHub's retention policy.
+The branch includes the generated `PALSParserCpp_jll` package and tested binaries
+for Linux x86_64 (glibc), macOS Apple Silicon and Intel, and Windows x86_64.
+Each compressed native artifact is under 1 MB. APC is bundled into the native
+library. No GitHub CLI, CI artifact download, or native compilation is required.
 
 ```console
 git clone --branch feat/jll-packaging https://github.com/pals-project/PALSParserJ.jl.git
 cd PALSParserJ.jl
-
-gh run download RUN_ID --repo pals-project/PALSParserJ.jl --name binary-products --dir products
-gh run download RUN_ID --repo pals-project/PALSParserJ.jl --name generated-wrapper --dir generated-jll
+julia --project=.
 ```
 
-Start Julia with `julia --project=.` from this checkout and run:
+Then run:
 
 ```julia
-# Verify and install the native artifact, then check the generated JLL's C API.
-# Both downloads must come from the same workflow run.
-ENV["JLL_RECIPE"] = "PALSParserCpp"
-append!(ARGS, ["products", "generated-jll"])
-include("contrib/jll/smoke_tarball.jl")
-
-# The smoke script activates a temporary environment; return to this checkout.
 using Pkg
-Pkg.activate(".")
-Pkg.develop(path="generated-jll")
+Pkg.develop(path="contrib/PALSParserCpp_jll")
 Pkg.instantiate()
 import PALSParserJ
 ```
 
-Keep `generated-jll` at that location: the local environment references it by
-path. The smoke script installs the verified native binary into Julia's artifact
-store, so no manual unpacking or library-path configuration is needed. See
-[JLL packaging details](contrib/jll/README.md) for the build workflow.
+Julia downloads the matching binary automatically from a pinned commit in this
+repository and verifies its checksum. Keep the bundled JLL directory in place:
+the local environment references it by path. This preview JLL is not yet registered
+in General; `Pkg.develop` supplies that dependency on Julia 1.10 and later.
+The binaries and their corresponding source archive are preserved under
+[`contrib/jll/products`](contrib/jll/products), independently of CI retention.
+See [JLL packaging details](contrib/jll/README.md) for provenance and rebuilding.
 
 ### Optional native development override
 

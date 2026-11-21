@@ -1,4 +1,4 @@
-name: Julia tests with locally built JLL
+name: Julia tests with bundled JLL
 
 on:
   push:
@@ -11,5 +11,21 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
-    uses: ./.github/workflows/jll-build.yml
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, macos-15-intel, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+      - name: Install bundled JLL and test
+        shell: julia --project=. {0}
+        run: |
+          using Pkg
+          Pkg.develop(path="contrib/PALSParserCpp_jll")
+          Pkg.instantiate()
+          Pkg.test()
