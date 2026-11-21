@@ -27,24 +27,72 @@ A translator from `SciBmad` to `PALS` is planned.
 
 ## Installation
 
-PALSParserJ is a thin Julia wrapper around the C library built by
-[PALSParserCpp](https://github.com/pals-project/PALSParserCpp), so both
-repositories must be cloned side by side and the C library must be built first:
+This branch requires Julia 1.10 or later and uses `PALSParserCpp_jll` to load
+platform-matched binaries of
+[PALSParserCpp](https://github.com/pals-project/PALSParserCpp). A separate C++
+checkout or compiler is not required when using the JLL binaries.
+
+**Packaging preview:** `PALSParserCpp_jll` is not yet registered or published as a
+release. Running `Pkg.instantiate()` alone on this branch therefore does not
+complete installation. For now, install the generated wrapper and binaries from
+a successful [JLL build workflow](https://github.com/pals-project/PALSParserJ.jl/actions/workflows/jll-build.yml)
+run, as CI does. These artifacts cover Linux x86_64 (glibc), macOS Apple Silicon
+and Intel, and Windows x86_64.
+
+### Install the CI artifacts
+
+The following commands use the [GitHub CLI](https://cli.github.com/) (`gh`),
+authenticated with `gh auth login`. Replace `RUN_ID` with the ID of a successful
+run that contains both `binary-products` and `generated-wrapper` artifacts.
+Artifacts expire according to GitHub's retention policy.
 
 ```console
-git clone https://github.com/pals-project/PALSParserCpp.git
-git clone https://github.com/pals-project/PALSParserJ.jl.git
+git clone --branch feat/jll-packaging https://github.com/pals-project/PALSParserJ.jl.git
+cd PALSParserJ.jl
 
-cd PALSParserCpp && cmake -S . -B build && cmake --build build && cd ..
-
-cd PALSParserJ.jl && julia --project=. -e 'using Pkg; Pkg.instantiate()'
+gh run download RUN_ID --repo pals-project/PALSParserJ.jl --name binary-products --dir products
+gh run download RUN_ID --repo pals-project/PALSParserJ.jl --name generated-wrapper --dir generated-jll
 ```
 
-If PALSParserCpp lives somewhere other than beside this checkout, point at it
-with `PALS_PARSER_CPP_DIR` or `PALS_PARSER_CPP_LIB`.
+Start Julia with `julia --project=.` from this checkout and run:
 
-**See the [Installation guide](https://pals-project.github.io/PALSParserJ.jl/guide/installation.html)
-for full step-by-step instructions.**
+```julia
+# Verify and install the native artifact, then check the generated JLL's C API.
+# Both downloads must come from the same workflow run.
+ENV["JLL_RECIPE"] = "PALSParserCpp"
+append!(ARGS, ["products", "generated-jll"])
+include("contrib/jll/smoke_tarball.jl")
+
+# The smoke script activates a temporary environment; return to this checkout.
+using Pkg
+Pkg.activate(".")
+Pkg.develop(path="generated-jll")
+Pkg.instantiate()
+import PALSParserJ
+```
+
+Keep `generated-jll` at that location: the local environment references it by
+path. The smoke script installs the verified native binary into Julia's artifact
+store, so no manual unpacking or library-path configuration is needed. See
+[JLL packaging details](contrib/jll/README.md) for the build workflow.
+
+### Optional native development override
+
+To test a locally compiled PALSParserCpp library instead of the JLL binary, set
+`PALS_PARSER_CPP_LIB` to the shared library's absolute path **before the first
+parser call** in a fresh Julia session:
+
+```julia
+ENV["PALS_PARSER_CPP_LIB"] = "/absolute/path/to/libPALSParserCpp.dylib" # macOS
+import PALSParserJ
+```
+
+Use the corresponding `.so` or `.dll` path on Linux or Windows. Alternatively,
+set `PALS_PARSER_CPP_DIR` to the PALSParserCpp checkout; the loader searches its
+`build`, `build/Release`, and `build/Debug` directories. The library must match
+your Julia process's CPU architecture. Sibling checkouts are no longer discovered
+automatically. These overrides select the native library at runtime; they do not
+remove the `PALSParserCpp_jll` package dependency from the Julia environment.
 
 ## Quick start
 
@@ -107,4 +155,5 @@ jupyter notebook examples/manipulate_tree.ipynb
 julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
-The C library must be built first.
+Complete the installation above before running the tests. A manual C++ build
+is only needed when using a native development override.
