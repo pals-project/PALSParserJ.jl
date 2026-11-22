@@ -108,3 +108,8 @@ julia --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 The C library must be built first.
+
+## License
+
+PALSParserJ is licensed under the GNU General Public License, version 2
+only (`GPL-2.0-only`). See [LICENSE](LICENSE).
